@@ -1,6 +1,9 @@
 # Local .terraform directories
 **/.terraform/*
 
+# Trainer-private slide decks (copyrighted courseware - not committed)
+PPT/
+
 # .tfstate files
 *.tfstate
 *.tfstate.*

@@ -4,6 +4,18 @@
 * text=auto
 
 ###############################################################################
+# Binary assets - mark explicitly so the global "* text=auto" never corrupts
+# them via line-ending normalization (sample-data + any committed media).
+###############################################################################
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pptx binary
+*.zip  binary
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by
