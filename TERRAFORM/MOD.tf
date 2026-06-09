@@ -1,159 +1,257 @@
-# 這個 Storage Account 資源用於儲存檔案、Blob 等資料
+###############################################################################
+# AI-901 - Resources for the "Introduction to AI in Azure" demos.
+#
+# A single Microsoft Foundry (kind = AIServices) account hosts everything the
+# course demos: Azure OpenAI model deployments (chat / agents / vision / text),
+# Azure AI Language, Azure AI Speech, Azure AI Vision, and Azure Content
+# Understanding. The trainer creates agents live in the portal; this stack
+# deploys the models and a Content Understanding analyzer so module demos
+# return real results immediately.
+#
+# Model selection is validated against the Foundry model retirement schedule
+# (https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement).
+# See README for the full table.
+###############################################################################
+
+###############################################################################
+# Storage - holds the sample data used by the Content Understanding and vision
+# demos.
+#
+# Company policy forbids storage account access keys, so the account is
+# Entra ID (AAD) only: shared_access_key_enabled = false, containers are
+# created via the management plane (storage_account_id), and every principal
+# that touches blob data gets an explicit RBAC role (below). The upload script
+# uses `az ... --auth-mode login` (AAD), never a key.
+###############################################################################
 resource "azurerm_storage_account" "default" {
-  name                            = "ai900${var.group_postfix}stor${local.random_str}"
+  name                            = "${local.class_name}${var.group_postfix}st${local.random_str}"
   location                        = azurerm_resource_group.rg.location
   resource_group_name             = azurerm_resource_group.rg.name
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
   allow_nested_items_to_be_public = false
 
-  tags = {
-    environment = local.group_name
-  }
+  # Company policy forbids access keys - enforce Entra ID (AAD) auth only.
+  shared_access_key_enabled = false
+
+  tags = local.default_tags
 }
 
-# 這個 Key Vault 資源用於安全地儲存並管理機密資訊
-resource "azurerm_key_vault" "default" {
-  name                     = "${local.group_name_lower}-key-vault-${local.random_str}"
-  location                 = azurerm_resource_group.rg.location
-  resource_group_name      = azurerm_resource_group.rg.name
-  tenant_id                = data.azurerm_client_config.current.tenant_id
-  sku_name                 = "standard"
-  purge_protection_enabled = false
-
-  tags = {
-    environment = local.group_name
-  }
+# Sample documents for the Content Understanding analyzer demo (module 6).
+# Containers use storage_account_id (management plane) so they can be created
+# without storage data-plane keys (which policy forbids).
+resource "azurerm_storage_container" "documents" {
+  name                  = "sample-documents"
+  storage_account_id    = azurerm_storage_account.default.id
+  container_access_type = "private"
 }
 
-# 這個資源用於建立 Azure Cognitive Services，提供 AI 與機器學習等功能
-resource "azapi_resource" "AIServicesResource" {
-  type      = "Microsoft.CognitiveServices/accounts@2023-10-01-preview"
-  name      = "${local.group_name_lower}-ai-svc-res-${local.random_str}"
-  location  = azurerm_resource_group.rg.location
-  parent_id = azurerm_resource_group.rg.id
+# Sample images for the computer-vision / multimodal demos (module 5).
+resource "azurerm_storage_container" "images" {
+  name                  = "sample-images"
+  storage_account_id    = azurerm_storage_account.default.id
+  container_access_type = "private"
+}
+
+###############################################################################
+# Role assignment for Entra ID (AAD) blob data access.
+# Because access keys are disabled, the principal running Terraform (and the
+# data-plane upload script) needs an explicit RBAC role to read/write blobs.
+###############################################################################
+resource "azurerm_role_assignment" "deployer_blob" {
+  scope                = azurerm_storage_account.default.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = local.deployer_oid
+}
+
+###############################################################################
+# Microsoft Foundry account + project.
+# kind = AIServices with project management enabled gives one multi-service
+# resource that hosts Azure OpenAI model deployments AND Azure AI Language,
+# Speech, Vision, and Content Understanding.
+# Pattern follows the official docs:
+# https://learn.microsoft.com/azure/foundry/how-to/create-resource-terraform
+###############################################################################
+resource "azurerm_cognitive_account" "foundry" {
+  name                  = "${local.group_name_lower}-foundry-${local.random_str}"
+  location              = azurerm_resource_group.rg.location
+  resource_group_name   = azurerm_resource_group.rg.name
+  kind                  = "AIServices"
+  sku_name              = "S0"
+  custom_subdomain_name = "${local.group_name_lower}-foundry-${local.random_str}"
+
+  # Company policy enforces Entra ID (AAD) auth only - keys are disabled.
+  # AAD auth requires a custom subdomain (regional endpoints reject AAD tokens).
+  local_auth_enabled = false
+
+  # Required for the modern Foundry (stateful) experience and projects.
+  project_management_enabled = true
 
   identity {
     type = "SystemAssigned"
   }
 
-  body = {
-    name = "${local.group_name_lower}-ai-svc-res-${local.random_str}"
-    properties = {
-      //restore = true
-      customSubDomainName = "${local.group_name_lower}-${local.random_str}-domain"
-      apiProperties = {
-        statisticsEnabled = false
-      }
-    }
-    kind = "AIServices"
-    sku = {
-      name = "S0"
-    }
-  }
-
-  response_export_values = ["*"]
-
-  tags = {
-    environment = local.group_name
-  }
+  tags = local.default_tags
 }
 
-// 這個資源用於建立 Azure Machine Learning 服務工作區，提供自動化機器學習等功能
-resource "azapi_resource" "hub" {
-  type      = "Microsoft.MachineLearningServices/workspaces@2024-04-01-preview"
-  name      = "${local.group_name_lower}-ai-hub-${local.random_str}"
-  location  = azurerm_resource_group.rg.location
-  parent_id = azurerm_resource_group.rg.id
+# The principal running the Content Understanding data-plane script needs to
+# call the AI Services data plane via AAD.
+resource "azurerm_role_assignment" "deployer_cs_user" {
+  scope                = azurerm_cognitive_account.foundry.id
+  role_definition_name = "Cognitive Services User"
+  principal_id         = local.deployer_oid
+}
+
+resource "azurerm_cognitive_account_project" "project" {
+  name                 = "${local.group_name_lower}-project"
+  cognitive_account_id = azurerm_cognitive_account.foundry.id
+  location             = azurerm_resource_group.rg.location
 
   identity {
     type = "SystemAssigned"
   }
 
-  body = {
-    properties = {
-      description    = "${local.group_name} Azure AI hub"
-      friendlyName   = "${local.group_name} Hub"
-      storageAccount = azurerm_storage_account.default.id
-      keyVault       = azurerm_key_vault.default.id
+  tags = local.default_tags
+}
 
-      /* Optional: To enable these field, the corresponding dependent resources need to be uncommented.
-      applicationInsight = azurerm_application_insights.default.id
-      containerRegistry = azurerm_container_registry.default.id
-      */
+###############################################################################
+# Model deployments.
+# Deployments are created one at a time (depends_on chain) because the
+# Cognitive Services control plane rejects parallel deployment writes.
+# Deployment name == model name so the Content Understanding default mapping
+# is an identity map.
+#
+# Versions are pinned and were GA as of 2026-06-09. Re-check the retirement
+# schedule before each delivery and bump as needed.
+###############################################################################
 
-      /*Optional: To enable Customer Managed Keys, the corresponding 
-      encryption = {
-        status = var.encryption_status
-        keyVaultProperties = {
-            keyVaultArmId = azurerm_key_vault.default.id
-            keyIdentifier = var.cmk_keyvault_key_uri
-        }
-      }
-      */
+# Primary model: chat, agents, text analysis (general-purpose), and vision
+# (gpt-4.1-mini is multimodal). Used across modules 1, 2, 3, and 5.
+# GA, retirement no earlier than 2027-10-14.
+resource "azurerm_cognitive_deployment" "gpt" {
+  name                 = "gpt-4.1-mini"
+  cognitive_account_id = azurerm_cognitive_account.foundry.id
 
-    }
-    kind = "hub"
+  sku {
+    name     = "GlobalStandard"
+    capacity = var.chat_capacity
   }
 
-  tags = {
-    environment = local.group_name
+  model {
+    format  = "OpenAI"
+    name    = "gpt-4.1-mini"
+    version = "2025-04-14"
   }
 }
 
-resource "azapi_resource" "project" {
-  type      = "Microsoft.MachineLearningServices/workspaces@2024-04-01-preview"
-  name      = "${local.group_name_lower}-ai-project-${local.random_str}"
-  location  = azurerm_resource_group.rg.location
-  parent_id = azurerm_resource_group.rg.id
+# Completion model for Content Understanding (module 6). CU supports a fixed
+# set of completion models; gpt-4.1 is required by the prebuilt invoice/receipt
+# analyzers this stack's custom analyzer is based on. GA, retires 2027-10-14.
+resource "azurerm_cognitive_deployment" "cu_completion" {
+  name                 = "gpt-4.1"
+  cognitive_account_id = azurerm_cognitive_account.foundry.id
 
-  identity {
-    type = "SystemAssigned"
+  sku {
+    name     = "GlobalStandard"
+    capacity = var.cu_completion_capacity
   }
 
-  body = {
-    properties = {
-      description   = "${local.group_name} Azure AI Project"
-      friendlyName  = "${local.group_name} Project"
-      hubResourceId = azapi_resource.hub.id
+  model {
+    format  = "OpenAI"
+    name    = "gpt-4.1"
+    version = "2025-04-14"
+  }
+
+  depends_on = [azurerm_cognitive_deployment.gpt]
+}
+
+# Embedding model required by Content Understanding analyzers (module 6).
+resource "azurerm_cognitive_deployment" "embedding" {
+  name                 = "text-embedding-3-large"
+  cognitive_account_id = azurerm_cognitive_account.foundry.id
+
+  sku {
+    name     = "Standard"
+    capacity = var.embedding_capacity
+  }
+
+  model {
+    format  = "OpenAI"
+    name    = "text-embedding-3-large"
+    version = "1"
+  }
+
+  depends_on = [azurerm_cognitive_deployment.cu_completion]
+}
+
+###############################################################################
+# Data-plane automation.
+# Brings the environment to a "completed" demo-ready state:
+#   1. upload sample data to blob storage (AAD auth)
+#   2. create a Content Understanding analyzer over the sample documents
+#
+# Each step runs a PowerShell script (PowerShell 7 + az CLI). Requires an
+# authenticated `az` session. Gated by var.enable_data_plane.
+###############################################################################
+
+locals {
+  pwsh           = "pwsh"
+  pwsh_args      = ["-NoProfile", "-File"]
+  scripts_dir    = "${path.module}/scripts"
+  sampledata_dir = "${path.module}/sample-data"
+  cu_analyzer_id = "ai901receiptanalyzer"
+}
+
+resource "terraform_data" "upload_sample_data" {
+  count = var.enable_data_plane ? 1 : 0
+
+  triggers_replace = [
+    azurerm_storage_account.default.id,
+    filesha256("${local.scripts_dir}/upload-sample-data.ps1"),
+  ]
+
+  depends_on = [
+    azurerm_storage_container.documents,
+    azurerm_storage_container.images,
+    azurerm_role_assignment.deployer_blob,
+  ]
+
+  provisioner "local-exec" {
+    interpreter = concat([local.pwsh], local.pwsh_args)
+    command     = "${local.scripts_dir}/upload-sample-data.ps1"
+
+    environment = {
+      STORAGE_ACCOUNT  = azurerm_storage_account.default.name
+      SAMPLE_DATA_PATH = local.sampledata_dir
     }
-    kind = "project"
-  }
-
-  tags = {
-    environment = local.group_name
   }
 }
 
-resource "azapi_resource" "AIServicesConnection" {
-  type      = "Microsoft.MachineLearningServices/workspaces/connections@2024-04-01-preview"
-  name      = "${local.group_name_lower}-ai-svc-conn-${local.random_str}"
-  parent_id = azapi_resource.hub.id
+resource "terraform_data" "create_cu_analyzer" {
+  count = var.enable_data_plane ? 1 : 0
 
-  body = {
-    properties = {
-      category      = "AIServices",
-      target        = azapi_resource.AIServicesResource.output.properties.endpoint,
-      authType      = "AAD",
-      isSharedToAll = true,
-      metadata = {
-        ApiType    = "Azure",
-        ResourceId = azapi_resource.AIServicesResource.id
-      }
+  triggers_replace = [
+    azurerm_cognitive_account.foundry.id,
+    filesha256("${local.scripts_dir}/create-cu-analyzer.ps1"),
+  ]
+
+  depends_on = [
+    terraform_data.upload_sample_data,
+    azurerm_cognitive_deployment.cu_completion,
+    azurerm_cognitive_deployment.embedding,
+    azurerm_role_assignment.deployer_cs_user,
+  ]
+
+  provisioner "local-exec" {
+    interpreter = concat([local.pwsh], local.pwsh_args)
+    command     = "${local.scripts_dir}/create-cu-analyzer.ps1"
+
+    environment = {
+      CU_ENDPOINT           = azurerm_cognitive_account.foundry.endpoint
+      ANALYZER_ID           = local.cu_analyzer_id
+      COMPLETION_DEPLOYMENT = azurerm_cognitive_deployment.cu_completion.name
+      EMBEDDING_DEPLOYMENT  = azurerm_cognitive_deployment.embedding.name
+      CHAT_DEPLOYMENT       = azurerm_cognitive_deployment.gpt.name
     }
-  }
-
-  response_export_values = ["*"]
-}
-
-resource "azurerm_cognitive_account" "default" {
-  name                = "${local.group_name_lower}-ai-svc-${local.random_str}"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  sku_name            = "S0"
-  kind                = "CognitiveServices"
-
-  tags = {
-    environment = local.group_name
   }
 }
