@@ -208,6 +208,32 @@ resource "azurerm_cognitive_deployment" "image" {
   depends_on = [azurerm_cognitive_deployment.embedding]
 }
 
+# Video-generation model (module 5). Sora is Preview, so OFF by default. When
+# enabled it is placed last in the depends_on chain (after embedding and the
+# image deployment if present) so deployment writes stay serialized regardless
+# of the image toggle.
+resource "azurerm_cognitive_deployment" "video" {
+  count                = var.enable_video_generation ? 1 : 0
+  name                 = var.video_model_name
+  cognitive_account_id = azurerm_cognitive_account.foundry.id
+
+  sku {
+    name     = "GlobalStandard"
+    capacity = var.video_capacity
+  }
+
+  model {
+    format  = "OpenAI"
+    name    = var.video_model_name
+    version = var.video_model_version
+  }
+
+  depends_on = [
+    azurerm_cognitive_deployment.embedding,
+    azurerm_cognitive_deployment.image,
+  ]
+}
+
 ###############################################################################
 # Data-plane automation.
 # Brings the environment to a "completed" demo-ready state:

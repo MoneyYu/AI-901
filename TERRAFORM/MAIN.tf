@@ -109,6 +109,34 @@ variable "image_capacity" {
   default     = 1
 }
 
+# Video generation (module 5). Sora is Preview, so it is OFF by default - the
+# standard stack stays exactly as validated. Flip enable_video_generation to
+# true to deploy sora-2 for the module 5 video-generation demo (subject to
+# Preview availability / quota in the region).
+variable "enable_video_generation" {
+  description = "Deploy a Sora video-generation model (Preview) for the module 5 video demo. Off by default."
+  type        = bool
+  default     = false
+}
+
+variable "video_model_name" {
+  description = "Video-generation model to deploy when enable_video_generation = true."
+  type        = string
+  default     = "sora-2"
+}
+
+variable "video_model_version" {
+  description = "Version for video_model_name (sora-2 2025-10-06 retires 2026-07-15; prefer 2025-12-08)."
+  type        = string
+  default     = "2025-12-08"
+}
+
+variable "video_capacity" {
+  description = "Capacity for the video-generation deployment."
+  type        = number
+  default     = 1
+}
+
 variable "deployer_object_id" {
   description = "Entra object ID that the data-plane scripts authenticate as (the `az login` identity). Defaults to the identity Terraform runs as. Override when Terraform runs under a different principal (e.g. a service principal) than `az`."
   type        = string

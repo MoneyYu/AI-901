@@ -22,13 +22,14 @@ plus model deployments and a Content Understanding analyzer.
 | `azurerm_cognitive_deployment.cu_completion` = **gpt-4.1** | Content Understanding completion model (M6) |
 | `azurerm_cognitive_deployment.embedding` = **text-embedding-3-large** | Content Understanding embeddings (M6) |
 | `azurerm_cognitive_deployment.image` = **gpt-image-2** *(toggle)* | Image generation (M5) — GA; gated by `enable_image_generation` |
+| `azurerm_cognitive_deployment.video` = **sora-2** *(toggle, off)* | Video generation (M5) — Preview; gated by `enable_video_generation`, needs Sora quota |
 | `azurerm_storage_account.default` + containers | Sample receipts (M6) and images (M5) |
 | Content Understanding analyzer `ai901receiptanalyzer` | Custom receipt field-extraction demo (M6) |
 
 Speech (M4), Language (M3), and Vision image **analysis** (M5) need **no extra resources** — they're
 exposed by the same multi-service Foundry account and demoed live in the portal/playground. Image
-**generation** (M5) is deployed (`gpt-image-2`, GA); **video** generation (Sora, Preview) is a manual
-portal step.
+**generation** (M5) is deployed by default (`gpt-image-2`, GA). **Video** generation (`sora-2`, Preview)
+is an **optional toggle, off by default** — enable it only if your subscription has Sora quota (see Models).
 
 ## Entra ID (AAD) only — no keys
 
@@ -106,6 +107,10 @@ terraform destroy -var group_postfix=0609
 | `image_model_name` | `gpt-image-2` | Image-generation model (GA) |
 | `image_model_version` | `2026-04-21` | Version for `image_model_name` |
 | `image_capacity` | `1` | Image deployment capacity (image models share a small per-region quota) |
+| `enable_video_generation` | `false` | Deploy the sora-2 video model (M5, Preview). **Off by default** — needs Sora quota |
+| `video_model_name` | `sora-2` | Video-generation model (Preview) |
+| `video_model_version` | `2025-12-08` | Version for `video_model_name` |
+| `video_capacity` | `1` | Video deployment capacity (Sora RPM quota) |
 | `deployer_object_id` | `null` | Entra object ID for data-plane RBAC (defaults to the Terraform identity) |
 | `enable_data_plane` | `true` | Run the sample-data + CU analyzer scripts during `apply` |
 
@@ -120,12 +125,15 @@ before each delivery.**
 | gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA, retires 2027-10-14 | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
 | gpt-4.1 | `gpt-4.1` | 2025-04-14 | GA, retires 2027-10-14 | Content Understanding completion (M6) |
 | text-embedding-3-large | `text-embedding-3-large` | 1 | GA | Content Understanding embeddings (M6) |
-| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | Image generation (M5) — toggle `enable_image_generation` |
+| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | Image generation (M5) — toggle `enable_image_generation` (on) |
+| sora-2 | `sora-2` | 2025-12-08 | Preview | Video generation (M5) — toggle `enable_video_generation` (**off**) |
 
-> **Video generation (M5)** — `sora` / `sora-2` are **Preview** (deploy in `eastus2`). They are **not**
-> deployed by this stack; deploy Sora manually in the Foundry portal if you want to demo video
-> generation live. (`gpt-image-1`-series image models need access registration; this stack uses the
-> GA `gpt-image-2` instead.)
+> **Video generation (M5)** — `sora-2` is **Preview** and **quota-constrained**. The Terraform *can*
+> deploy it (the deployment request is valid in `eastus2`), but it is **off by default** because the
+> Sora-2 quota (Requests Per Minute) is small and often fully allocated — a test apply in the prep
+> subscription returned `InsufficientQuota` (15/15 used). Enable `enable_video_generation=true` only if
+> you have free Sora quota; otherwise demo video generation in the Foundry portal. (`gpt-image-1`-series
+> image models need access registration, so this stack uses the GA `gpt-image-2` for image generation.)
 
 ## Notes
 

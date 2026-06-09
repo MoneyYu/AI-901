@@ -21,10 +21,11 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | 模型部署 `gpt-4.1` | M6 Content Understanding 完成模型 |
 | 模型部署 `text-embedding-3-large` | M6 Content Understanding 嵌入 |
 | 模型部署 `gpt-image-2`（toggle） | M5 影像生成（GA；`enable_image_generation` 可關閉） |
+| 模型部署 `sora-2`（toggle，預設關閉） | M5 影片生成（Preview；`enable_video_generation`，需 Sora 配額） |
 | Storage（`sample-documents`、`sample-images`） | M6 收據、M5 影像 |
 | Content Understanding analyzer `ai901receiptanalyzer` | M6 收據欄位擷取 demo |
 
-> Speech（M4）、Language（M3）、Vision 影像**分析**（M5）**不需額外資源**——由同一個多服務 Foundry 帳戶提供，於 portal/playground 現場示範。影像**生成**（M5）已部署 `gpt-image-2`；**影片**生成（Sora，Preview）仍為手動。
+> Speech（M4）、Language（M3）、Vision 影像**分析**（M5）**不需額外資源**——由同一個多服務 Foundry 帳戶提供，於 portal/playground 現場示範。影像**生成**（M5）已預設部署 `gpt-image-2`；**影片**生成（`sora-2`，Preview）為**選用 toggle、預設關閉**，需 Sora 配額才能啟用。
 
 ## 模型表（lifecycle-safe）
 
@@ -36,10 +37,10 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA，2027-10-14 退役 | chat / agents / text / vision（M1/M2/M3/M5） | Terraform |
 | gpt-4.1 | `gpt-4.1` | 2025-04-14 | GA，2027-10-14 退役 | Content Understanding 完成模型（M6） | Terraform |
 | text-embedding-3-large | `text-embedding-3-large` | 1 | GA | Content Understanding 嵌入（M6） | Terraform |
-| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | M5 影像生成 | Terraform（toggle `enable_image_generation`） |
-| sora / sora-2（影片生成） | — | — | Preview | M5 影片生成（選用） | **手動於 Foundry 入口** |
+| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | M5 影像生成 | Terraform（toggle `enable_image_generation`，預設 on） |
+| sora-2 | `sora-2` | 2025-12-08 | Preview | M5 影片生成 | Terraform（toggle `enable_video_generation`，**預設 off**） |
 
-> **影像 vs 影片生成（M5）**：`gpt-image-2` 為 **GA**，已由 Terraform 部署（`enable_image_generation` 預設 true，配額不足時可關閉）。`gpt-image-1` 系列需申請存取權限，故改用 GA 的 `gpt-image-2`。**影片**生成（`sora`/`sora-2`）仍為 **Preview**，請在 Foundry 入口手動部署。CU 的完成模型僅支援固定集合（gpt-4.1 / gpt-4.1-mini / gpt-5.2），故與 chat 模型分開部署。
+> **影像 vs 影片生成（M5）**：`gpt-image-2` 為 **GA**，已由 Terraform 預設部署（`enable_image_generation`，配額不足時可關閉）。`gpt-image-1` 系列需申請存取權限，故改用 GA 的 `gpt-image-2`。**影片**生成（`sora-2`，**Preview**）Terraform 可部署，但因 Sora-2 配額（RPM）很小且常被佔滿（備課訂用帳戶測試回傳 `InsufficientQuota`，15/15），故 `enable_video_generation` **預設 off**；有 Sora 配額才啟用，否則於 Foundry 入口示範。CU 的完成模型僅支援固定集合（gpt-4.1 / gpt-4.1-mini / gpt-5.2），故與 chat 模型分開部署。
 
 ## Entra ID（AAD）only — 不使用任何 key
 
@@ -61,6 +62,7 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | 2026-06-09 | 0609 | ✅ apply → 資料平面 → destroy 全程通過 | 15 | 訂用帳戶 `ME-MngEnvMCAP124981-tzyu-1`（eastus2）。資料平面：3 收據 + 3 影像上傳、`ai901receiptanalyzer` 建立成功。CU analyzer 首次因模型部署傳播延遲（400 DeploymentIdNotFound）失敗，已於腳本加入該情況重試後通過。 |
 | 2026-06-10 | 0610 | ✅ apply → 資料平面 → destroy 全程通過 | 16 | 新增 `gpt-image-2`（GA）影像生成部署並驗證成功（4 個模型部署）。CU defaults PATCH 同樣加入 DeploymentIdNotFound 重試後通過。 |
 | 2026-06-10 | verify | ✅ **單次 apply 從零部署成功**（無需重跑）→ destroy | 16 | 乾淨驗證：硬化後的 CU 重試在**單一 apply 內**吸收部署傳播延遲，analyzer 一次成功；4 模型部署 + 樣本資料上傳皆完成；destroy 乾淨。 |
+| 2026-06-10 | vid2 | ⚠️ video toggle 測試：config 有效但配額不足 | — | `enable_video_generation=true` 測試 `sora-2`：部署請求**有效並被接受**，但回傳 `InsufficientQuota`（Sora-2 RPM 15/15 已用滿）。證實 `sora-2` 可由 Terraform 部署、但本訂用帳戶無 Sora 配額，故 `enable_video_generation` **預設 off**。當天 eastus2 控制平面異常緩慢（部署逐一耗時數分鐘、出現 token 過期與 connection reset），已清乾淨。 |
 
 ## 參考
 
