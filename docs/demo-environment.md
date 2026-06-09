@@ -60,6 +60,7 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | --- | --- | --- | --- | --- |
 | 2026-06-09 | 0609 | ✅ apply → 資料平面 → destroy 全程通過 | 15 | 訂用帳戶 `ME-MngEnvMCAP124981-tzyu-1`（eastus2）。資料平面：3 收據 + 3 影像上傳、`ai901receiptanalyzer` 建立成功。CU analyzer 首次因模型部署傳播延遲（400 DeploymentIdNotFound）失敗，已於腳本加入該情況重試後通過。 |
 | 2026-06-10 | 0610 | ✅ apply → 資料平面 → destroy 全程通過 | 16 | 新增 `gpt-image-2`（GA）影像生成部署並驗證成功（4 個模型部署）。CU defaults PATCH 同樣加入 DeploymentIdNotFound 重試後通過。 |
+| 2026-06-10 | verify | ✅ **單次 apply 從零部署成功**（無需重跑）→ destroy | 16 | 乾淨驗證：硬化後的 CU 重試在**單一 apply 內**吸收部署傳播延遲，analyzer 一次成功；4 模型部署 + 樣本資料上傳皆完成；destroy 乾淨。 |
 
 ## 參考
 
