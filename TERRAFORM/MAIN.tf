@@ -81,6 +81,34 @@ variable "embedding_capacity" {
   default     = 30
 }
 
+# Image generation (module 5). gpt-image-2 is GA (no access registration), so it
+# can be deployed by Terraform. Gated by a toggle and parameterized so you can
+# disable it or swap to a model you have quota for. Video generation (Sora) is
+# Preview and stays a manual portal step - see TERRAFORM/README.md.
+variable "enable_image_generation" {
+  description = "Deploy a GA image-generation model (gpt-image-2) for the module 5 image-generation demo. Disable if your subscription lacks image quota in the region."
+  type        = bool
+  default     = true
+}
+
+variable "image_model_name" {
+  description = "Image-generation model to deploy (module 5). Default gpt-image-2 (GA)."
+  type        = string
+  default     = "gpt-image-2"
+}
+
+variable "image_model_version" {
+  description = "Version for image_model_name. Must match the model."
+  type        = string
+  default     = "2026-04-21"
+}
+
+variable "image_capacity" {
+  description = "Capacity for the image-generation deployment (image models share a small per-region quota)."
+  type        = number
+  default     = 1
+}
+
 variable "deployer_object_id" {
   description = "Entra object ID that the data-plane scripts authenticate as (the `az login` identity). Defaults to the identity Terraform runs as. Override when Terraform runs under a different principal (e.g. a service principal) than `az`."
   type        = string

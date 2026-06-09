@@ -20,10 +20,11 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | 模型部署 `gpt-4.1-mini` | M1、M2（agents）、M3（general-purpose 文字）、M5（多模態視覺） |
 | 模型部署 `gpt-4.1` | M6 Content Understanding 完成模型 |
 | 模型部署 `text-embedding-3-large` | M6 Content Understanding 嵌入 |
+| 模型部署 `gpt-image-2`（toggle） | M5 影像生成（GA；`enable_image_generation` 可關閉） |
 | Storage（`sample-documents`、`sample-images`） | M6 收據、M5 影像 |
 | Content Understanding analyzer `ai901receiptanalyzer` | M6 收據欄位擷取 demo |
 
-> Speech（M4）、Language（M3）、Vision（M5）**不需額外資源**——由同一個多服務 Foundry 帳戶提供，於 portal/playground 現場示範。
+> Speech（M4）、Language（M3）、Vision 影像**分析**（M5）**不需額外資源**——由同一個多服務 Foundry 帳戶提供，於 portal/playground 現場示範。影像**生成**（M5）已部署 `gpt-image-2`；**影片**生成（Sora，Preview）仍為手動。
 
 ## 模型表（lifecycle-safe）
 
@@ -35,11 +36,10 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA，2027-10-14 退役 | chat / agents / text / vision（M1/M2/M3/M5） | Terraform |
 | gpt-4.1 | `gpt-4.1` | 2025-04-14 | GA，2027-10-14 退役 | Content Understanding 完成模型（M6） | Terraform |
 | text-embedding-3-large | `text-embedding-3-large` | 1 | GA | Content Understanding 嵌入（M6） | Terraform |
-| gpt-image-*（影像生成） | — | — | Preview / 配額受限 | M5 影像生成（選用） | **手動於 Foundry 入口** |
-| sora（影片生成） | — | — | Preview / 配額受限 | M5 影片生成（選用） | **手動於 Foundry 入口** |
+| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | M5 影像生成 | Terraform（toggle `enable_image_generation`） |
+| sora / sora-2（影片生成） | — | — | Preview | M5 影片生成（選用） | **手動於 Foundry 入口** |
 
-> **為何不在 Terraform 部署 image/video 生成？** 這些模型多為 Preview、且共用很小的區域配額，容易讓 `apply` 失敗。
-> 需要示範 M5「生成」時，請在 Foundry 入口手動部署。CU 的完成模型僅支援固定集合（gpt-4.1 / gpt-4.1-mini / gpt-5.2），故與 chat 模型分開部署。
+> **影像 vs 影片生成（M5）**：`gpt-image-2` 為 **GA**，已由 Terraform 部署（`enable_image_generation` 預設 true，配額不足時可關閉）。`gpt-image-1` 系列需申請存取權限，故改用 GA 的 `gpt-image-2`。**影片**生成（`sora`/`sora-2`）仍為 **Preview**，請在 Foundry 入口手動部署。CU 的完成模型僅支援固定集合（gpt-4.1 / gpt-4.1-mini / gpt-5.2），故與 chat 模型分開部署。
 
 ## Entra ID（AAD）only — 不使用任何 key
 
@@ -59,6 +59,7 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | 日期 | group_postfix | 結果 | 資源數 | 備註 |
 | --- | --- | --- | --- | --- |
 | 2026-06-09 | 0609 | ✅ apply → 資料平面 → destroy 全程通過 | 15 | 訂用帳戶 `ME-MngEnvMCAP124981-tzyu-1`（eastus2）。資料平面：3 收據 + 3 影像上傳、`ai901receiptanalyzer` 建立成功。CU analyzer 首次因模型部署傳播延遲（400 DeploymentIdNotFound）失敗，已於腳本加入該情況重試後通過。 |
+| 2026-06-10 | 0610 | ✅ apply → 資料平面 → destroy 全程通過 | 16 | 新增 `gpt-image-2`（GA）影像生成部署並驗證成功（4 個模型部署）。CU defaults PATCH 同樣加入 DeploymentIdNotFound 重試後通過。 |
 
 ## 參考
 

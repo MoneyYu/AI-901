@@ -21,11 +21,14 @@ plus model deployments and a Content Understanding analyzer.
 | `azurerm_cognitive_deployment.gpt` = **gpt-4.1-mini** | Chat / agents / text / vision (M1, M2, M3, M5) |
 | `azurerm_cognitive_deployment.cu_completion` = **gpt-4.1** | Content Understanding completion model (M6) |
 | `azurerm_cognitive_deployment.embedding` = **text-embedding-3-large** | Content Understanding embeddings (M6) |
+| `azurerm_cognitive_deployment.image` = **gpt-image-2** *(toggle)* | Image generation (M5) — GA; gated by `enable_image_generation` |
 | `azurerm_storage_account.default` + containers | Sample receipts (M6) and images (M5) |
 | Content Understanding analyzer `ai901receiptanalyzer` | Custom receipt field-extraction demo (M6) |
 
-Speech (M4), Language (M3), and Vision (M5) need **no extra resources** — they're exposed by the same
-multi-service Foundry account and demoed live in the portal/playground.
+Speech (M4), Language (M3), and Vision image **analysis** (M5) need **no extra resources** — they're
+exposed by the same multi-service Foundry account and demoed live in the portal/playground. Image
+**generation** (M5) is deployed (`gpt-image-2`, GA); **video** generation (Sora, Preview) is a manual
+portal step.
 
 ## Entra ID (AAD) only — no keys
 
@@ -99,6 +102,10 @@ terraform destroy -var group_postfix=0609
 | `chat_capacity` | `30` | gpt-4.1-mini TPM (thousands) |
 | `cu_completion_capacity` | `10` | gpt-4.1 TPM for Content Understanding |
 | `embedding_capacity` | `30` | text-embedding-3-large TPM |
+| `enable_image_generation` | `true` | Deploy the gpt-image-2 image model (M5). Disable if no image quota in the region |
+| `image_model_name` | `gpt-image-2` | Image-generation model (GA) |
+| `image_model_version` | `2026-04-21` | Version for `image_model_name` |
+| `image_capacity` | `1` | Image deployment capacity (image models share a small per-region quota) |
 | `deployer_object_id` | `null` | Entra object ID for data-plane RBAC (defaults to the Terraform identity) |
 | `enable_data_plane` | `true` | Run the sample-data + CU analyzer scripts during `apply` |
 
@@ -110,13 +117,15 @@ before each delivery.**
 
 | Model | Deployment | Version | Status (2026-06-09) | Used by |
 | --- | --- | --- | --- | --- |
-| gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA, retires 2027-10-14 | Chat, agents, text, vision (M1/M2/M3/M5) |
+| gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA, retires 2027-10-14 | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
 | gpt-4.1 | `gpt-4.1` | 2025-04-14 | GA, retires 2027-10-14 | Content Understanding completion (M6) |
 | text-embedding-3-large | `text-embedding-3-large` | 1 | GA | Content Understanding embeddings (M6) |
+| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | Image generation (M5) — toggle `enable_image_generation` |
 
-> **Image / video generation (M5)** — image (`gpt-image-*`) and video (`sora`) models are
-> Preview / quota-constrained and are **not** deployed by this stack. Deploy them manually in the
-> Foundry portal if you want to demo generation live.
+> **Video generation (M5)** — `sora` / `sora-2` are **Preview** (deploy in `eastus2`). They are **not**
+> deployed by this stack; deploy Sora manually in the Foundry portal if you want to demo video
+> generation live. (`gpt-image-1`-series image models need access registration; this stack uses the
+> GA `gpt-image-2` instead.)
 
 ## Notes
 

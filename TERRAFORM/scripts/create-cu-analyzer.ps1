@@ -81,11 +81,13 @@ $defaults = @{
     }
 }
 $defaultsUri = "$endpoint/contentunderstanding/defaults?api-version=$apiVersion"
-for ($attempt = 1; $attempt -le 10; $attempt++) {
+for ($attempt = 1; $attempt -le 12; $attempt++) {
     $dr = Invoke-WebRequest -Method Patch -Uri $defaultsUri -Headers $headers -Body ($defaults | ConvertTo-Json -Depth 6) -SkipHttpErrorCheck
     if ($dr.StatusCode -lt 400) { break }
-    if ($dr.StatusCode -in 401, 403 -and $attempt -lt 10) {
-        Write-Host "  attempt $attempt got HTTP $($dr.StatusCode) (likely RBAC propagation); retrying in 20s..."
+    $isDeploymentLag = $dr.StatusCode -eq 400 -and "$($dr.Content)" -match 'DeploymentIdNotFound'
+    if (($dr.StatusCode -in 401, 403 -or $isDeploymentLag) -and $attempt -lt 12) {
+        $why = if ($isDeploymentLag) { 'model deployment not yet visible to CU' } else { 'likely RBAC propagation' }
+        Write-Host "  attempt $attempt got HTTP $($dr.StatusCode) ($why); retrying in 20s..."
         Start-Sleep -Seconds 20
         continue
     }

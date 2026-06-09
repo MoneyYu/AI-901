@@ -41,6 +41,11 @@ output "embedding_deployment" {
   value = azurerm_cognitive_deployment.embedding.name
 }
 
+output "image_deployment" {
+  description = "Image-generation deployment (module 5), if enabled."
+  value       = var.enable_image_generation ? azurerm_cognitive_deployment.image[0].name : null
+}
+
 # --- Storage -----------------------------------------------------------------
 output "storage_account_name" {
   value = azurerm_storage_account.default.name
