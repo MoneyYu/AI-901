@@ -5,12 +5,7 @@ GA: G-DXYJBX6BH8
 ---
 
 # AI-901 Reference
-
-> **Course AI-901T00-A: Introduction to AI in Azure**
-> Foundational AI concepts and the Azure services that make them practical: responsible AI,
-> generative AI and **agents**, text analysis, speech, computer vision, and information extraction —
-> built and consumed through **Microsoft Foundry**. This refreshed course **replaces AI-900** and
-> prepares you for the *Microsoft Certified: Azure AI Fundamentals* (exam **AI-901**).
+> ##### **Course AI-901T00-A: Introduction to AI in Azure**: <br/> Foundational AI concepts and the Azure services that make them practical: responsible AI, generative AI and **agents**, text analysis, speech, computer vision, and information extraction — built and consumed through **Microsoft Foundry**.
 
 ## Course
 :::success
@@ -53,30 +48,10 @@ Valid for 6 months
 ### Instruction
 [AI-901 Labs EN - mslearn-ai-fundamentals](https://microsoftlearning.github.io/mslearn-ai-fundamentals/)
 
-- [M01 - Get started with Microsoft Foundry](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/00-explore-foundry.html)
-- [M02 - Get started with generative AI and agents](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/02a-generative-ai.html)
-- [M03 - Get started with text analysis](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/03b-text-analysis.html)
-- [M04 - Get started with speech](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/04a-speech.html)
-- [M05 - Get started with computer vision](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/05a-image-analysis.html)
-- [M06 - Get started with Content Understanding](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/06a-content-understanding.html)
-- [Extra - Get started with Foundry IQ](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/07-foundry-iq.html)
-
 [AI-901 Lab files (main.zip)](https://github.com/MicrosoftLearning/mslearn-ai-fundamentals/archive/refs/heads/main.zip)
 
-:::warning
-At time of writing there are **no localized (zh-cn / zh-tw) lab repositories** for AI-901 — only the
-**English** lab instructions above are available (a Japanese `ja-jp` repo also exists). The course
-slides and the learning path *are* localized, but the hands-on labs are **English-only**.
-:::
-
 ## Links
-
-These are reference links **per topic** for the concepts the slides cover. The course pages and the
-learning path (with each module) are in [Course Materials](#course-materials) above; the links here go
-deeper into individual services and the key comparisons.
-
 ### Foundations & cross-cutting
-
 #### Microsoft Foundry & Azure
 
 [What is Microsoft Foundry?](https://learn.microsoft.com/azure/ai-foundry/what-is-azure-ai-foundry)
@@ -107,23 +82,17 @@ deeper into individual services and the key comparisons.
 
 [Content filter configurability](https://learn.microsoft.com/azure/ai-foundry/openai/concepts/content-filter-configurability)
 
-### Per-module references
-
-#### M01 · Get started with AI in Azure
+#### M01 - Get started with AI in Azure
 
 [Explore AI workloads (Computing History app)](https://microsoftlearning.github.io/ai-apps/computing-history/)
 
 ##### API key vs Microsoft Entra ID token
 
-A Foundry **endpoint** is the HTTP address an app calls; the request must be **authenticated**. Two
-options: an **API key** (a shared secret — simple, but anyone with the key has full access) or a
-**Microsoft Entra ID token** (identity-based, supports RBAC, no long-lived secret to leak). Prefer
-**Entra ID** for anything beyond quick experimentation — and note many enterprise tenants *require* it.
+[Authentication & keys vs Entra ID for Azure AI services](https://learn.microsoft.com/azure/ai-services/authentication)
 
-- [Authentication & keys vs Entra ID for Azure AI services](https://learn.microsoft.com/azure/ai-services/authentication)
-- [Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/overview)
+[Azure RBAC](https://learn.microsoft.com/azure/role-based-access-control/overview)
 
-#### M02 · Get started with generative AI and agents
+#### M02 - Get started with generative AI and agents
 
 [Understand embeddings](https://learn.microsoft.com/azure/ai-foundry/openai/concepts/understand-embeddings)
 
@@ -133,32 +102,21 @@ options: an **API key** (a shared secret — simple, but anyone with the key has
 
 ##### LLM vs SLM
 
-**Large language models (LLMs)** maximize capability and breadth; **small language models (SLMs)** are
-more compact and run in resource-constrained or on-device scenarios with lower cost/latency. Both are
-transformer models that predict the next token from **tokens → embeddings → attention**.
-
-- [Foundry Models overview](https://learn.microsoft.com/azure/ai-foundry/concepts/foundry-models-overview)
+[Foundry Models overview](https://learn.microsoft.com/azure/ai-foundry/concepts/foundry-models-overview)
 
 ##### First-party vs partner & community models
 
-The Foundry catalog mixes **models sold directly by Azure** (e.g. Azure OpenAI — billed via your Azure
-subscription, Microsoft-supported) with **partner & community** models from third-party providers.
-Choose by capability, **deployment type**, version/auto-update policy, rate limits, and guardrails.
+[Models sold directly by Azure](https://learn.microsoft.com/azure/ai-foundry/foundry-models/concepts/models-sold-directly-by-azure)
 
-- [Models sold directly by Azure](https://learn.microsoft.com/azure/ai-foundry/foundry-models/concepts/models-sold-directly-by-azure)
-- [Model catalog](https://learn.microsoft.com/azure/ai-foundry/how-to/model-catalog-overview)
+[Model catalog](https://learn.microsoft.com/azure/ai-foundry/how-to/model-catalog-overview)
 
 ##### ChatCompletions API vs Responses API
 
-The course code uses `client.responses.create(...)`. **Chat Completions** is the broadly-used,
-**stateless** API (the client resends the full conversation each turn). **Responses** is the newer,
-**stateful** API that unifies Chat Completions + Assistants and is **agent-aware** (pass an
-`agent_reference`). Prefer **Responses** for new apps and agents.
+[Work with Chat Completions models](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/chatgpt)
 
-- [Work with Chat Completions models](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/chatgpt)
-- [Use the Responses API](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses)
+[Use the Responses API](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses)
 
-#### M03 · Get started with text analysis
+#### M03 - Get started with text analysis
 
 [What is Azure AI Language?](https://learn.microsoft.com/azure/ai-services/language-service/overview)
 
@@ -178,27 +136,11 @@ The course code uses `client.responses.create(...)`. **Chat Completions** is the
 
 ##### General-purpose AI models vs Azure Language in Foundry Tools
 
-AI-901 teaches **two approaches** to text analysis (because many Azure Language *in Foundry* features
-are being retired). Pick by the kind of result you need:
+[OpenAI Responses API](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses)
 
-| Use **general-purpose AI models** (e.g. gpt-4.1-mini) when… | Use **Azure Language in Foundry Tools** when… |
-| --- | --- |
-| You need flexible, conversational analysis | You need consistent, **structured** output |
-| You want to combine multiple tasks in one prompt | You're building automated pipelines |
-| Natural-language responses are fine | You require specific **confidence scores** |
-| You can tolerate some variability | You handle **regulated data** (PII / PHI) & need deterministic, production-ready results |
+[Azure AI Language overview & SDKs](https://learn.microsoft.com/azure/ai-services/language-service/overview)
 
-##### OpenAI Python SDK vs Azure Language SDK
-
-Two client libraries match the two approaches above: the **OpenAI Python library** (prompt a
-general-purpose model via the **Responses API**) and the **Azure Language SDK** (purpose-built methods
-such as `recognize_entities`, `recognize_pii_entities`, `analyze_sentiment` that return categories +
-confidence scores).
-
-- [OpenAI Responses API](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses)
-- [Azure AI Language overview & SDKs](https://learn.microsoft.com/azure/ai-services/language-service/overview)
-
-#### M04 · Get started with speech
+#### M04 - Get started with speech
 
 [What is the Azure AI Speech service?](https://learn.microsoft.com/azure/ai-services/speech-service/overview)
 
@@ -206,7 +148,7 @@ confidence scores).
 
 [Text to speech (synthesis)](https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech)
 
-#### M05 · Get started with computer vision
+#### M05 - Get started with computer vision
 
 [What is Azure AI Vision?](https://learn.microsoft.com/azure/ai-services/computer-vision/overview)
 
@@ -214,14 +156,11 @@ confidence scores).
 
 ##### Image analysis vs image/video generation
 
-Computer vision now spans **interpreting** images (multimodal models describe, classify, and reason
-over an image) **and generating** them. AI-901 introduces both — analysis with vision-enabled models,
-and **image/video generation**.
+[Generate images (GPT-Image)](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/dall-e)
 
-- [Generate images (GPT-Image)](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/dall-e)
-- [Video generation with Sora (preview)](https://learn.microsoft.com/azure/ai-foundry/openai/concepts/video-generation)
+[Video generation with Sora (preview)](https://learn.microsoft.com/azure/ai-foundry/openai/concepts/video-generation)
 
-#### M06 · Get started with information extraction
+#### M06 - Get started with information extraction
 
 [What is Azure AI Content Understanding?](https://learn.microsoft.com/azure/ai-services/content-understanding/overview)
 
@@ -239,7 +178,7 @@ and **image/video generation**.
 ```markmap
 # Introduction to AI in Azure (AI-901)
 
-## M01 · Get started with AI
+## M01 - Get started with AI
 ### AI concepts
 - Software that imitates human capabilities
 - AI workloads: GenAI & agents, language, speech, vision, info extraction
@@ -249,7 +188,7 @@ and **image/video generation**.
 - [Microsoft Foundry](https://learn.microsoft.com/azure/ai-foundry/what-is-azure-ai-foundry): resources & projects (Models, Agents, Tools, Knowledge)
 - [Endpoints](https://learn.microsoft.com/azure/foundry/foundry-models/concepts/endpoints): REST, key **vs** Entra ID token, SDKs
 
-## M02 · Generative AI & agents
+## M02 - Generative AI & agents
 ### Concepts
 - Generates text, images, code; LLM **vs** SLM
 - Tokens → [embeddings](https://learn.microsoft.com/azure/ai-foundry/openai/concepts/understand-embeddings) → attention → transformers
@@ -259,23 +198,23 @@ and **image/video generation**.
 - Playground; [Chat Completions](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/chatgpt) **vs** [Responses API](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses)
 - Foundry Agent Service
 
-## M03 · Text analysis
+## M03 - Text analysis
 ### NLP tasks
 - [NER](https://learn.microsoft.com/azure/ai-services/language-service/named-entity-recognition/overview), [sentiment](https://learn.microsoft.com/azure/ai-services/language-service/sentiment-opinion-mining/overview), [key phrases](https://learn.microsoft.com/azure/ai-services/language-service/key-phrase-extraction/overview), [PII](https://learn.microsoft.com/azure/ai-services/language-service/personally-identifiable-information/overview), summarization
 ### Two approaches
 - General-purpose models (prompts) **vs** [Azure Language](https://learn.microsoft.com/azure/ai-services/language-service/overview) (structured + confidence)
 - OpenAI SDK **vs** Azure Language SDK; [MCP](https://learn.microsoft.com/azure/ai-foundry/agents/how-to/tools/model-context-protocol) in agents
 
-## M04 · Speech
+## M04 - Speech
 - [Speech to text](https://learn.microsoft.com/azure/ai-services/speech-service/speech-to-text) (recognition)
 - [Text to speech](https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech) (synthesis)
 - Speech-capable agents
 
-## M05 · Computer vision
+## M05 - Computer vision
 - [Azure AI Vision](https://learn.microsoft.com/azure/ai-services/computer-vision/overview); [multimodal models](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/gpt-with-vision)
 - Generation: [images](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/dall-e), [video (Sora)](https://learn.microsoft.com/azure/ai-foundry/openai/concepts/video-generation)
 
-## M06 · Information extraction
+## M06 - Information extraction
 - [Content Understanding](https://learn.microsoft.com/azure/ai-services/content-understanding/overview): [analyzers](https://learn.microsoft.com/azure/ai-services/content-understanding/concepts/analyzer-reference), documents + audio + video
 - [OCR / Document Intelligence](https://learn.microsoft.com/azure/ai-services/document-intelligence/overview?view=doc-intel-4.0.0)
 - [Foundry IQ](https://learn.microsoft.com/azure/foundry/agents/concepts/what-is-foundry-iq) + [AI Search](https://learn.microsoft.com/azure/search/search-what-is-azure-search)

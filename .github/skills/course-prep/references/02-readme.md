@@ -27,8 +27,10 @@ rationale, no Terraform, no internal notes. Those live in `docs/` (Phase 6 and
    - **Instruction**: the lab exercise links (grouped per lab repo if there are several), plus each
      `main.zip`. Add a `:::warning` if labs aren't localized.
 6. **`## Links`** — curated, **topic-grouped** authoritative Microsoft Learn links (per module /
-   service). This is where you add comparisons surfaced by the slides (e.g. *ChatCompletions API vs
-   Responses API*, *Default vs Custom deployment settings*) with a short explanation + links.
+   service). Keep it **link-only**: when the slides surface a comparison (e.g. *ChatCompletions API
+   vs Responses API*, *Default vs Custom deployment settings*), add a concise `##### X vs Y` topic
+   heading with the authoritative link(s) beneath — **no inline prose summaries or comparison
+   tables**. The conceptual depth for those comparisons lives in `docs/teaching-guide.md`.
 7. *(optional)* **mind map** — a ```` ```markmap ```` overview of the modules.
 
 ## Per-instance metadata to refresh every delivery
@@ -41,5 +43,6 @@ update them and nothing else when only re-running the same course.
 - **Verify every external link resolves (HTTP 200)** before adding it. Drop or fix dead links.
 - Prefer canonical `learn.microsoft.com/...` URLs over blog/marketing pages.
 - Keep wording concise and attendee-appropriate; technical depth goes in `docs/teaching-guide.md`.
-- When the slides show two competing concepts, add a short **comparison** (a small table) to the
-  relevant `## Links` subsection rather than burying a single link.
+- When the slides show two competing concepts, add a concise `##### X vs Y` topic heading in the
+  relevant `## Links` subsection with the authoritative link(s) beneath — keep the explanation /
+  comparison table in `docs/teaching-guide.md`, **not** in the attendee README.
