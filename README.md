@@ -66,7 +66,7 @@ Valid for 6 months
 
 [Deployment types for Foundry Models](https://learn.microsoft.com/azure/ai-foundry/foundry-models/concepts/deployment-types)
 
-[Foundry Models lifecycle and retirement schedule](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)
+[Foundry Models lifecycle and retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)
 
 [What is Microsoft Entra ID?](https://learn.microsoft.com/entra/fundamentals/whatis)
 

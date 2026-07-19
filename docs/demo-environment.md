@@ -17,8 +17,8 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | 資源 | 對應模組 |
 | --- | --- |
 | Foundry 帳戶（AIServices）+ 專案 | M1（也提供 M3 Language / M4 Speech / M5 Vision / M6 CU 的端點） |
-| 模型部署 `gpt-4.1-mini` | M1、M2（agents）、M3（general-purpose 文字）、M5（多模態視覺） |
-| 模型部署 `gpt-4.1` | M6 Content Understanding 完成模型 |
+| 模型部署 `gpt-5.4-mini` | M1、M2（agents）、M3（general-purpose 文字）、M5（多模態視覺） |
+| 模型部署 `gpt-5.2` | M6 Content Understanding 完成模型 |
 | 模型部署 `text-embedding-3-large` | M6 Content Understanding 嵌入 |
 | 模型部署 `gpt-image-2`（toggle） | M5 影像生成（GA；`enable_image_generation` 可關閉） |
 | 模型部署 `sora-2`（toggle，預設關閉） | M5 影片生成（Preview；`enable_video_generation`，需 Sora 配額） |
@@ -29,18 +29,23 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 
 ## 模型表（lifecycle-safe）
 
-版本為 **2026-06-09** 當下的 **GA**。**每次開課前**請依
-[retirement schedule](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)重新檢查。
+版本為 **2026-07-20** 當下的 **GA**（`version_upgrade_option = "NoAutoUpgrade"` 鎖版）。**每次開課前**請依
+[retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)重新檢查。
 
-| 模型 | 部署名稱 | 版本 | 狀態（2026-06-09） | 用途 | 部署方式 |
+> ⚠️ **gpt-4.1 家族已棄用**（2026-10-14 退役），本 stack 已遷移：chat → **gpt-5.4-mini**、CU 完成模型 → **gpt-5.2**。
+> CU 唯一非棄用的完成模型是 gpt-5.2，但它**自己在 2026-12-12 退役**——請在此之前規劃下一次遷移。
+> 上游官方 mslearn AI-901 實驗部署的是 **gpt-5-mini**；本備援 stack 改用 **gpt-5.4-mini**（配額較寬、退役較遠，
+> demo 功能等價），示範時若要與實驗一字不差，可自行把 `gpt` 部署改為 gpt-5-mini。
+
+| 模型 | 部署名稱 | 版本 | 狀態（2026-07-20） | 用途 | 部署方式 |
 | --- | --- | --- | --- | --- | --- |
-| gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA，2027-10-14 退役 | chat / agents / text / vision（M1/M2/M3/M5） | Terraform |
-| gpt-4.1 | `gpt-4.1` | 2025-04-14 | GA，2027-10-14 退役 | Content Understanding 完成模型（M6） | Terraform |
-| text-embedding-3-large | `text-embedding-3-large` | 1 | GA | Content Understanding 嵌入（M6） | Terraform |
+| gpt-5.4-mini | `gpt-5.4-mini` | 2026-03-17 | GA，2027-03-18 退役 | chat / agents / text / vision（M1/M2/M3/M5） | Terraform |
+| gpt-5.2 | `gpt-5.2` | 2025-12-11 | GA，2026-12-12 退役 | Content Understanding 完成模型（M6） | Terraform |
+| text-embedding-3-large | `text-embedding-3-large` | 1 | GA，2027-04-15 退役 | Content Understanding 嵌入（M6） | Terraform |
 | gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | M5 影像生成 | Terraform（toggle `enable_image_generation`，預設 on） |
 | sora-2 | `sora-2` | 2025-12-08 | Preview | M5 影片生成 | Terraform（toggle `enable_video_generation`，**預設 off**） |
 
-> **影像 vs 影片生成（M5）**：`gpt-image-2` 為 **GA**，已由 Terraform 預設部署（`enable_image_generation`，配額不足時可關閉）。`gpt-image-1` 系列需申請存取權限，故改用 GA 的 `gpt-image-2`。**影片**生成（`sora-2`，**Preview**）Terraform 可部署，但因 Sora-2 配額（RPM）很小且常被佔滿（備課訂用帳戶測試回傳 `InsufficientQuota`，15/15），故 `enable_video_generation` **預設 off**；有 Sora 配額才啟用，否則於 Foundry 入口示範。CU 的完成模型僅支援固定集合（gpt-4.1 / gpt-4.1-mini / gpt-5.2），故與 chat 模型分開部署。
+> **影像 vs 影片生成（M5）**：`gpt-image-2` 為 **GA**，已由 Terraform 預設部署（`enable_image_generation`，配額不足時可關閉）。`gpt-image-1` 系列需申請存取權限，故改用 GA 的 `gpt-image-2`。**影片**生成（`sora-2`，**Preview**）Terraform 可部署，但因 Sora-2 配額（RPM）很小且常被佔滿（備課訂用帳戶測試回傳 `InsufficientQuota`，15/15），故 `enable_video_generation` **預設 off**；有 Sora 配額才啟用，否則於 Foundry 入口示範。CU 的完成模型僅支援固定集合（gpt-5.2 / gpt-4.1 / gpt-4.1-mini / gpt-4.1-nano，其中 gpt-4.1 家族已棄用），故 CU 使用 gpt-5.2、與 chat 模型分開部署。
 
 ## Entra ID（AAD）only — 不使用任何 key
 
@@ -63,10 +68,11 @@ Azure OpenAI、Azure AI Language、Speech、Vision、Content Understanding。
 | 2026-06-10 | 0610 | ✅ apply → 資料平面 → destroy 全程通過 | 16 | 新增 `gpt-image-2`（GA）影像生成部署並驗證成功（4 個模型部署）。CU defaults PATCH 同樣加入 DeploymentIdNotFound 重試後通過。 |
 | 2026-06-10 | verify | ✅ **單次 apply 從零部署成功**（無需重跑）→ destroy | 16 | 乾淨驗證：硬化後的 CU 重試在**單一 apply 內**吸收部署傳播延遲，analyzer 一次成功；4 模型部署 + 樣本資料上傳皆完成；destroy 乾淨。 |
 | 2026-06-10 | vid2 | ⚠️ video toggle 測試：config 有效但配額不足 | — | `enable_video_generation=true` 測試 `sora-2`：部署請求**有效並被接受**，但回傳 `InsufficientQuota`（Sora-2 RPM 15/15 已用滿）。證實 `sora-2` 可由 Terraform 部署、但本訂用帳戶無 Sora 配額，故 `enable_video_generation` **預設 off**。當天 eastus2 控制平面異常緩慢（部署逐一耗時數分鐘、出現 token 過期與 connection reset），已清乾淨。 |
+| 2026-07-20 | 0720 | ✅ **模型遷移驗證通過**（apply 成功） | 16 | gpt-4.1 家族棄用（2026-10-14 退役）＋ gpt-4.1 GlobalStandard 配額凍結（3075/3075）→ 遷移 chat `gpt-4.1-mini`→`gpt-5.4-mini`、CU 完成模型 `gpt-4.1`→`gpt-5.2`（embedding 不變）。`terraform apply -var group_postfix=0720`：**5 added / 1 destroyed**；CU defaults 驗證通過、`ai901receiptanalyzer` 建立 succeeded；實際 `analyzeBinary` 收據推論回傳萃取欄位 + gpt-5.2 生成摘要。環境保留（未 destroy）。 |
 
 ## 參考
 
 - Terraform 操作：[`../TERRAFORM/README.md`](../TERRAFORM/README.md)
 - 備課指南：[`./teaching-guide.md`](./teaching-guide.md)
-- 模型退役排程：[Model lifecycle and retirement](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)
+- 模型退役排程：[Model retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)
 - Content Understanding 模型部署：[Model deployment options](https://learn.microsoft.com/azure/ai-services/content-understanding/concepts/models-deployments)

@@ -9,7 +9,7 @@
 # return real results immediately.
 #
 # Model selection is validated against the Foundry model retirement schedule
-# (https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement).
+# (https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule).
 # See README for the full table.
 ###############################################################################
 
@@ -121,16 +121,21 @@ resource "azurerm_cognitive_account_project" "project" {
 # Deployment name == model name so the Content Understanding default mapping
 # is an identity map.
 #
-# Versions are pinned and were GA as of 2026-06-09. Re-check the retirement
-# schedule before each delivery and bump as needed.
+# Versions are pinned to CU-supported / GA versions (checked 2026-07-20) and
+# set to NoAutoUpgrade so the pin holds. Re-check the retirement schedule
+# before each delivery and bump as needed:
+# https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule
 ###############################################################################
 
 # Primary model: chat, agents, text analysis (general-purpose), and vision
-# (gpt-4.1-mini is multimodal). Used across modules 1, 2, 3, and 5.
-# GA, retirement no earlier than 2027-10-14.
+# (gpt-5.4-mini is multimodal). Used across modules 1, 2, 3, and 5.
+# GA, retires 2027-03-18. NOTE: the upstream mslearn AI-901 lab deploys
+# gpt-5-mini; this backup stack uses gpt-5.4-mini for wider quota headroom /
+# longer runway (functionally equivalent) - see docs/demo-environment.md.
 resource "azurerm_cognitive_deployment" "gpt" {
-  name                 = "gpt-4.1-mini"
-  cognitive_account_id = azurerm_cognitive_account.foundry.id
+  name                   = "gpt-5.4-mini"
+  cognitive_account_id   = azurerm_cognitive_account.foundry.id
+  version_upgrade_option = "NoAutoUpgrade"
 
   sku {
     name     = "GlobalStandard"
@@ -139,17 +144,20 @@ resource "azurerm_cognitive_deployment" "gpt" {
 
   model {
     format  = "OpenAI"
-    name    = "gpt-4.1-mini"
-    version = "2025-04-14"
+    name    = "gpt-5.4-mini"
+    version = "2026-03-17"
   }
 }
 
 # Completion model for Content Understanding (module 6). CU supports a fixed
-# set of completion models; gpt-4.1 is required by the prebuilt invoice/receipt
-# analyzers this stack's custom analyzer is based on. GA, retires 2027-10-14.
+# set of completion models; the gpt-4.1 family is deprecated (retires
+# 2026-10-14), so gpt-5.2 is the only non-deprecated CU completion model
+# (Microsoft's recommended migration target). GA, but itself retires
+# 2026-12-12 - re-check before each delivery.
 resource "azurerm_cognitive_deployment" "cu_completion" {
-  name                 = "gpt-4.1"
-  cognitive_account_id = azurerm_cognitive_account.foundry.id
+  name                   = "gpt-5.2"
+  cognitive_account_id   = azurerm_cognitive_account.foundry.id
+  version_upgrade_option = "NoAutoUpgrade"
 
   sku {
     name     = "GlobalStandard"
@@ -158,8 +166,8 @@ resource "azurerm_cognitive_deployment" "cu_completion" {
 
   model {
     format  = "OpenAI"
-    name    = "gpt-4.1"
-    version = "2025-04-14"
+    name    = "gpt-5.2"
+    version = "2025-12-11"
   }
 
   depends_on = [azurerm_cognitive_deployment.gpt]
@@ -167,8 +175,9 @@ resource "azurerm_cognitive_deployment" "cu_completion" {
 
 # Embedding model required by Content Understanding analyzers (module 6).
 resource "azurerm_cognitive_deployment" "embedding" {
-  name                 = "text-embedding-3-large"
-  cognitive_account_id = azurerm_cognitive_account.foundry.id
+  name                   = "text-embedding-3-large"
+  cognitive_account_id   = azurerm_cognitive_account.foundry.id
+  version_upgrade_option = "NoAutoUpgrade"
 
   sku {
     name     = "Standard"
@@ -190,9 +199,10 @@ resource "azurerm_cognitive_deployment" "embedding" {
 # depends_on chain (the control plane rejects parallel deployment writes).
 # Video generation (Sora) is Preview - deploy it manually in the portal.
 resource "azurerm_cognitive_deployment" "image" {
-  count                = var.enable_image_generation ? 1 : 0
-  name                 = var.image_model_name
-  cognitive_account_id = azurerm_cognitive_account.foundry.id
+  count                  = var.enable_image_generation ? 1 : 0
+  name                   = var.image_model_name
+  cognitive_account_id   = azurerm_cognitive_account.foundry.id
+  version_upgrade_option = "NoAutoUpgrade"
 
   sku {
     name     = "GlobalStandard"
@@ -213,9 +223,10 @@ resource "azurerm_cognitive_deployment" "image" {
 # image deployment if present) so deployment writes stay serialized regardless
 # of the image toggle.
 resource "azurerm_cognitive_deployment" "video" {
-  count                = var.enable_video_generation ? 1 : 0
-  name                 = var.video_model_name
-  cognitive_account_id = azurerm_cognitive_account.foundry.id
+  count                  = var.enable_video_generation ? 1 : 0
+  name                   = var.video_model_name
+  cognitive_account_id   = azurerm_cognitive_account.foundry.id
+  version_upgrade_option = "NoAutoUpgrade"
 
   sku {
     name     = "GlobalStandard"
@@ -282,6 +293,8 @@ resource "terraform_data" "create_cu_analyzer" {
 
   triggers_replace = [
     azurerm_cognitive_account.foundry.id,
+    azurerm_cognitive_deployment.cu_completion.name,
+    azurerm_cognitive_deployment.embedding.name,
     filesha256("${local.scripts_dir}/create-cu-analyzer.ps1"),
   ]
 
@@ -301,7 +314,6 @@ resource "terraform_data" "create_cu_analyzer" {
       ANALYZER_ID           = local.cu_analyzer_id
       COMPLETION_DEPLOYMENT = azurerm_cognitive_deployment.cu_completion.name
       EMBEDDING_DEPLOYMENT  = azurerm_cognitive_deployment.embedding.name
-      CHAT_DEPLOYMENT       = azurerm_cognitive_deployment.gpt.name
     }
   }
 }

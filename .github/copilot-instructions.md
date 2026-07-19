@@ -28,10 +28,13 @@ test suite. Deliverables are an attendee README, a trainer-only demo Terraform s
    a `custom_subdomain_name` (regional endpoints reject AAD tokens). Use managed identity + RBAC role
    assignments; scripts use `az account get-access-token` / `--auth-mode login` and **retry on 401/403**.
 3. **Models must be GA and not near retirement.** Re-check the
-   [retirement schedule](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)
-   with today's date before every delivery. Current: **gpt-4.1-mini** (chat/agents/vision/text),
-   **gpt-4.1** + **text-embedding-3-large** (Content Understanding). Content Understanding supports only
-   a fixed completion-model set (gpt-4.1 / gpt-4.1-mini / gpt-5.2), so CU gets its own deployment.
+   [retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)
+   with today's date before every delivery. Current: **gpt-5.4-mini** (chat/agents/vision/text),
+   **gpt-5.2** + **text-embedding-3-large** (Content Understanding). ⚠️ The **gpt-4.1 family is deprecated
+   (retires 2026-10-14)**; **gpt-5.2 itself retires 2026-12-12** (re-check / migrate before then). Content
+   Understanding supports only a fixed completion-model set (gpt-5.2 / gpt-4.1 family, the latter
+   deprecated), so CU gets its own deployment. The upstream mslearn lab uses gpt-5-mini; this stack
+   uses gpt-5.4-mini for quota headroom (equivalent).
 4. **Verify every external link (HTTP 200) before adding it** to README/docs.
 5. **The Terraform is a *backup* that must reach a completed (resources + data-plane) state** so demos
    show real results immediately.

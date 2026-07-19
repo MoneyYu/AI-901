@@ -28,12 +28,12 @@ output "foundry_project_name" {
 
 # --- Model deployments -------------------------------------------------------
 output "chat_deployment" {
-  description = "gpt-4.1-mini deployment (chat / agents / vision / text)."
+  description = "gpt-5.4-mini deployment (chat / agents / vision / text)."
   value       = azurerm_cognitive_deployment.gpt.name
 }
 
 output "cu_completion_deployment" {
-  description = "gpt-4.1 deployment used by Content Understanding."
+  description = "gpt-5.2 deployment used by Content Understanding."
   value       = azurerm_cognitive_deployment.cu_completion.name
 }
 

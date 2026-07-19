@@ -22,7 +22,7 @@
 - 全面改用 **Microsoft Foundry** 品牌（取代 Azure AI Foundry），並以 **agent + SDK** 為主軸。
 - 文字分析改教**兩種方法**（general-purpose 模型 + Azure Language）；視覺新增**影像／影片生成**；
   資訊擷取以 **Content Understanding** 為核心（含音訊／影片）。
-- 示範模型由 gpt-4o / dall-e-3 改為 **gpt-4.1-mini**。Lab 僅有 **英文（與 ja-jp）**，無 zh 版本。
+- 示範模型由 gpt-4o / dall-e-3 改為 **gpt-5 系列聊天模型**（官方實驗部署 gpt-5-mini；備援 Terraform 用 gpt-5.4-mini）。Lab 僅有 **英文（與 ja-jp）**，無 zh 版本。
 :::
 
 ---
@@ -79,14 +79,15 @@
    - **General-purpose 模型 vs Azure Language in Foundry Tools**（M3 重點，見下表）。
    - **OpenAI Python SDK vs Azure Language SDK**：自然語言彈性 vs 結構化＋信賴分數。
 4. **模型生命週期（model lifecycle）**：每次開課前都要重新檢查
-   [retirement schedule](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)。
-   目前示範用 **gpt-4.1-mini**（GA，預計 2027-10-14 退役）。
+   [retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)。
+   ⚠️ **gpt-4.1 家族已棄用（2026-10-14 退役）**，示範已改用 **gpt-5.4-mini**（chat，GA 至 2027-03-18）與
+   **gpt-5.2**（CU 完成模型，GA，但 **2026-12-12 退役**——12 月前需再遷移一次）。
 5. **示範環境是 Entra ID（AAD）only、不使用任何 key**：備援 Terraform 環境全程以受控識別 + RBAC 驗證
    （見 [`docs/demo-environment.md`](./demo-environment.md)）。這也呼應 M1「key vs Entra ID」的觀念。
 
 ### M3 對照表：兩種文字分析方法
 
-| 用 **general-purpose 模型**（如 gpt-4.1-mini）時… | 用 **Azure Language in Foundry Tools** 時… |
+| 用 **general-purpose 模型**（如 gpt-5.4-mini）時… | 用 **Azure Language in Foundry Tools** 時… |
 | --- | --- |
 | 需要彈性、對話式分析 | 需要一致、**結構化**輸出 |
 | 想在一個 prompt 內合併多個任務 | 建立自動化 pipeline |
@@ -105,7 +106,7 @@
   （Fairness、Reliability & Safety、Privacy & Security、Inclusiveness、Transparency、Accountability）；
   Azure 階層 **Tenant → Subscription → Resource group → Resources**，身分由 **Entra ID** 管理；
   Foundry resource vs project；endpoint = HTTP 位址，以 key 或 Entra ID token 驗證，SDK 封裝 REST。
-- **Demo / Lab**：[Get started with Microsoft Foundry](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/00-explore-foundry.html)（建立專案、部署 `gpt-4.1-mini`、連 chat app）。
+- **Demo / Lab**：[Get started with Microsoft Foundry](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/00-explore-foundry.html)（建立專案、部署 `gpt-5-mini`、連 chat app）。
 - **常見問題 / 坑**：學員常分不清 resource 與 project；強調「每個 lab 都要先建專案」。
   **Knowledge check 解答**：① 生成式 AI＝以語言模型「依 prompt 產生原創內容」；② AI agent＝「能代表使用者執行任務的 AI 應用」；
   ③ Foundry 建構在 Azure 之上、使用 Azure 資源；④ **endpoint 是呼叫模型的 URL，key 用來驗證請求**。
@@ -180,7 +181,7 @@
   欄位擷取/對應/正規化才產生可用欄位；**Azure Content Understanding in Foundry Tools** 是統一體驗——
   prebuilt 與 custom **analyzer**、REST API 回傳 JSON；不僅文件，也支援**音訊與影片**（通話分析、會議摘要等）。
 - **Demo / Lab**：[Content Understanding](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/06a-content-understanding.html)。備援環境已預建 `ai901receiptanalyzer` 收據 analyzer，可直接對 `sample-documents` 內收據做擷取示範。
-- **常見問題 / 坑**：CU 需先在資源層設定**預設模型部署**（gpt-4.1 / gpt-4.1-mini / text-embedding-3-large）——備援 Terraform 已自動處理；手動建立時務必記得。
+- **常見問題 / 坑**：CU 需先在資源層設定**預設模型部署**（gpt-5.2 完成模型 / text-embedding-3-large 嵌入）——備援 Terraform 已自動處理；手動建立時務必記得。
   **Knowledge check 解答**：① 資訊擷取＝「分析非結構化內容以擷取相關欄位與值」；② OCR＝「將文字影像轉成機器可讀文字」；
   ③ 生成式 AI 的助益＝「用語意模型把擷取值對應到欄位」；④ CU 優於純 OCR＝「理解文件結構並對應到 schema」；
   ⑤ analyzer 角色＝「定義內容如何處理與回傳哪些結構化資料」；⑥ CU SDK 送出後＝「需輪詢（poll）URL 直到工作完成」。
@@ -209,8 +210,8 @@
 
 ## 7. 課前準備清單（開課前 1–2 天）
 
-- [ ] 重新檢查**模型生命週期**（gpt-4.1-mini / gpt-4.1 是否仍 GA、未近退役）。
-- [ ] 確認目標區域（`eastus2`）對 **gpt-4.1-mini / gpt-4.1 / text-embedding-3-large** 有**配額**。
+- [ ] 重新檢查**模型生命週期**（gpt-5.4-mini / gpt-5.2 是否仍 GA、未近退役；⚠️ gpt-5.2 於 2026-12-12 退役）。
+- [ ] 確認目標區域（`eastus2`）對 **gpt-5.4-mini / gpt-5.2 / text-embedding-3-large** 有**配額**。
 - [ ] 如需示範 **image/video 生成（M5）**，先在 Foundry 入口**手動部署** gpt-image / sora（Preview/配額）。
 - [ ] 部署備援環境並驗證：`terraform apply -var group_postfix=<MMDD>`，確認 3 個模型部署 + 收據 analyzer 完成
       （見 [`docs/demo-environment.md`](./demo-environment.md)）。下課後 `terraform destroy`。
@@ -238,4 +239,4 @@
 - Learning path：[Get started with AI apps and agents](https://learn.microsoft.com/training/paths/get-started-ai-apps-agents/)
 - Lab repo：[MicrosoftLearning/mslearn-ai-fundamentals](https://github.com/MicrosoftLearning/mslearn-ai-fundamentals)
 - 課程頁：[AI-901T00-A](https://learn.microsoft.com/training/courses/ai-901t00)
-- 模型退役排程：[Model lifecycle and retirement](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)
+- 模型退役排程：[Model retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)

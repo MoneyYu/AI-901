@@ -18,8 +18,8 @@ plus model deployments and a Content Understanding analyzer.
 | `azurerm_resource_group.rg` (`AI901-<postfix>`) | Holds the backup environment |
 | `azurerm_resource_group.demo_rg` (`Demo<postfix>`) | Empty RG for the live from-scratch build |
 | `azurerm_cognitive_account.foundry` (AIServices) + `_project` | Foundry account/project (M1) |
-| `azurerm_cognitive_deployment.gpt` = **gpt-4.1-mini** | Chat / agents / text / vision (M1, M2, M3, M5) |
-| `azurerm_cognitive_deployment.cu_completion` = **gpt-4.1** | Content Understanding completion model (M6) |
+| `azurerm_cognitive_deployment.gpt` = **gpt-5.4-mini** | Chat / agents / text / vision (M1, M2, M3, M5) |
+| `azurerm_cognitive_deployment.cu_completion` = **gpt-5.2** | Content Understanding completion model (M6) |
 | `azurerm_cognitive_deployment.embedding` = **text-embedding-3-large** | Content Understanding embeddings (M6) |
 | `azurerm_cognitive_deployment.image` = **gpt-image-2** *(toggle)* | Image generation (M5) — GA; gated by `enable_image_generation` |
 | `azurerm_cognitive_deployment.video` = **sora-2** *(toggle, off)* | Video generation (M5) — Preview; gated by `enable_video_generation`, needs Sora quota |
@@ -46,7 +46,7 @@ Company policy forbids account/access keys, so the whole stack is key-less:
 ## Prerequisites
 
 - **Terraform** >= 1.5, **Azure CLI** (`az`), **PowerShell 7** (`pwsh`).
-- `az login` to a subscription **with model quota** for `gpt-4.1-mini`, `gpt-4.1`, and
+- `az login` to a subscription **with model quota** for `gpt-5.4-mini`, `gpt-5.2`, and
   `text-embedding-3-large` in **`eastus2`**.
 - The signed-in principal must be able to create role assignments (Owner / User Access Administrator)
   on the new resource group.
@@ -100,8 +100,8 @@ terraform destroy -var group_postfix=0609
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `group_postfix` | _(required)_ | 1–10 lowercase alphanumerics; drives all resource names |
-| `chat_capacity` | `30` | gpt-4.1-mini TPM (thousands) |
-| `cu_completion_capacity` | `10` | gpt-4.1 TPM for Content Understanding |
+| `chat_capacity` | `30` | gpt-5.4-mini TPM (thousands) |
+| `cu_completion_capacity` | `10` | gpt-5.2 TPM for Content Understanding |
 | `embedding_capacity` | `30` | text-embedding-3-large TPM |
 | `enable_image_generation` | `true` | Deploy the gpt-image-2 image model (M5). Disable if no image quota in the region |
 | `image_model_name` | `gpt-image-2` | Image-generation model (GA) |
@@ -116,15 +116,22 @@ terraform destroy -var group_postfix=0609
 
 ## Models
 
-Pinned versions were **GA** as of 2026-06-09. **Re-check the
-[retirement schedule](https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement)
+Pinned versions were **GA** as of 2026-07-20 (`version_upgrade_option = "NoAutoUpgrade"` holds the pin).
+**Re-check the
+[retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)
 before each delivery.**
 
-| Model | Deployment | Version | Status (2026-06-09) | Used by |
+> ⚠️ The **gpt-4.1 family is deprecated** (retires 2026-10-14), so this stack migrated off it:
+> chat → **gpt-5.4-mini**, CU completion → **gpt-5.2**. CU's only non-deprecated completion model is
+> gpt-5.2, which **itself retires 2026-12-12** — plan the next migration before then. The upstream
+> mslearn AI-901 lab deploys **gpt-5-mini**; this backup stack uses gpt-5.4-mini for wider quota
+> headroom (functionally equivalent for the demos).
+
+| Model | Deployment | Version | Status (2026-07-20) | Used by |
 | --- | --- | --- | --- | --- |
-| gpt-4.1-mini | `gpt-4.1-mini` | 2025-04-14 | GA, retires 2027-10-14 | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
-| gpt-4.1 | `gpt-4.1` | 2025-04-14 | GA, retires 2027-10-14 | Content Understanding completion (M6) |
-| text-embedding-3-large | `text-embedding-3-large` | 1 | GA | Content Understanding embeddings (M6) |
+| gpt-5.4-mini | `gpt-5.4-mini` | 2026-03-17 | GA, retires 2027-03-18 | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
+| gpt-5.2 | `gpt-5.2` | 2025-12-11 | GA, retires 2026-12-12 | Content Understanding completion (M6) |
+| text-embedding-3-large | `text-embedding-3-large` | 1 | GA, retires 2027-04-15 | Content Understanding embeddings (M6) |
 | gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | Image generation (M5) — toggle `enable_image_generation` (on) |
 | sora-2 | `sora-2` | 2025-12-08 | Preview | Video generation (M5) — toggle `enable_video_generation` (**off**) |
 

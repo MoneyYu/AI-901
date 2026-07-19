@@ -64,13 +64,13 @@ variable "group_postfix" {
 # Model capacities (thousands of tokens-per-minute). Adjust to the quota
 # available in your subscription/region before apply.
 variable "chat_capacity" {
-  description = "Capacity for the gpt-4.1-mini chat/agents/vision/text deployment."
+  description = "Capacity for the gpt-5.4-mini chat/agents/vision/text deployment."
   type        = number
   default     = 30
 }
 
 variable "cu_completion_capacity" {
-  description = "Capacity for the gpt-4.1 completion deployment used by Content Understanding."
+  description = "Capacity for the gpt-5.2 completion deployment used by Content Understanding."
   type        = number
   default     = 10
 }

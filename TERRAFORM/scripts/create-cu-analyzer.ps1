@@ -18,9 +18,8 @@
     Environment variables:
       CU_ENDPOINT           - Foundry / AI Services endpoint
       ANALYZER_ID           - id to give the custom analyzer
-      COMPLETION_DEPLOYMENT - gpt-4.1 deployment name (CU completion model)
+      COMPLETION_DEPLOYMENT - gpt-5.2 deployment name (CU completion model)
       EMBEDDING_DEPLOYMENT  - text-embedding-3-large deployment name
-      CHAT_DEPLOYMENT       - gpt-4.1-mini deployment name (CU "mini" default)
 
     Authentication: Entra ID (AAD). Company policy disables AI Services keys, so
     the script acquires a bearer token for https://cognitiveservices.azure.com
@@ -48,7 +47,6 @@ $endpoint   = (Get-RequiredEnv 'CU_ENDPOINT').TrimEnd('/')
 $analyzerId = Get-RequiredEnv 'ANALYZER_ID'
 $completion = Get-RequiredEnv 'COMPLETION_DEPLOYMENT'
 $embedding  = Get-RequiredEnv 'EMBEDDING_DEPLOYMENT'
-$chat       = Get-RequiredEnv 'CHAT_DEPLOYMENT'
 
 if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
     throw "Azure CLI ('az') was not found on PATH. Install it from https://aka.ms/azcli."
@@ -67,16 +65,24 @@ $headers = @{
 }
 
 # Content Understanding requires resource-level default model deployments to be
-# set before any analyzer can be created. Map the model names to our actual
-# deployment names via PATCH /contentunderstanding/defaults.
+# set before any analyzer can be created. Map the CU model names/aliases to our
+# actual deployment names via PATCH /contentunderstanding/defaults.
+#
+# CU's only non-deprecated completion model is gpt-5.2 (the gpt-4.1 family
+# retires 2026-10-14). Both the completion default and the "mini" alias point at
+# the gpt-5.2 deployment: this stack's custom analyzer only uses completion +
+# embedding, and no gpt-5-class "mini" is a CU-supported completion model.
+#
+# NOTE: PATCH /defaults uses JSON Merge Patch. This stack always targets a fresh
+# Foundry account, so there are no stale keys to clear. To re-point an EXISTING
+# resource, send the old keys (e.g. 'gpt-4.1') explicitly as $null to remove them.
 Write-Host "Setting Content Understanding default model deployments..."
 $defaults = @{
     modelDeployments = @{
-        'gpt-4.1'                           = $completion
-        'gpt-4.1-mini'                      = $chat
+        'gpt-5.2'                           = $completion
         'text-embedding-3-large'            = $embedding
         'prebuilt-analyzer-completion'      = $completion
-        'prebuilt-analyzer-completion-mini' = $chat
+        'prebuilt-analyzer-completion-mini' = $completion
         'prebuilt-analyzer-embedding'       = $embedding
     }
 }
@@ -93,6 +99,18 @@ for ($attempt = 1; $attempt -le 12; $attempt++) {
     }
     throw "Setting CU defaults failed (HTTP $($dr.StatusCode)): $($dr.Content)"
 }
+
+# Verify the effective defaults resolved: gpt-5.2 + embedding present, and no
+# deprecated gpt-4.1-family keys linger (only possible if a pre-existing resource
+# was re-pointed; fresh accounts never have them).
+$md = (Invoke-RestMethod -Method Get -Uri $defaultsUri -Headers $headers).modelDeployments
+if (-not $md.'gpt-5.2' -or -not $md.'text-embedding-3-large') {
+    throw "CU defaults missing expected mappings after PATCH: $($md | ConvertTo-Json -Depth 6)"
+}
+if ($md.'gpt-4.1' -or $md.'gpt-4.1-mini') {
+    throw "CU defaults still contain deprecated gpt-4.1 keys (send them as `$null to remove): $($md | ConvertTo-Json -Depth 6)"
+}
+Write-Host "  CU defaults verified (gpt-5.2 + text-embedding-3-large; no gpt-4.1 keys)." -ForegroundColor Green
 
 # Custom analyzer definition: extract the key fields from a receipt.
 $analyzer = @{
