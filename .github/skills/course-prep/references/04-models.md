@@ -9,7 +9,7 @@ today's date*. **Never** deploy a retired or soon-to-be-retired model; prefer th
 Avoid Preview models unless there is no GA alternative (and say so).
 
 - Authoritative source:
-  <https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule>
+  <https://learn.microsoft.com/azure/ai-foundry/concepts/model-lifecycle-retirement>
 
 ## Process
 
@@ -27,9 +27,8 @@ Avoid Preview models unless there is no GA alternative (and say so).
 ## Known constraints to bake in
 
 - **Azure Content Understanding only supports a fixed set of completion models** (currently
-  `gpt-5.2` plus the **deprecated** `gpt-4.1` family; `gpt-5.2` is the only non-deprecated option). So CU
-  needs its **own** completion-model deployment, separate from the general chat/vision deployment (e.g. a
-  `gpt-5.2` for CU **and** a newer `gpt-5.x` for chat/vision).
+  `gpt-4.1` / `gpt-5.2`). So CU needs its **own** completion-model deployment, separate from the
+  general chat/vision deployment (e.g. a `gpt-5.2` for CU **and** a newer `gpt-5.x` for chat/vision).
 - **Some models can't be deployed via Terraform** and must be created **manually in the portal**
   (AI-3008: `sora-2`, `FLUX`, `Phi-4`). Document those steps in `TERRAFORM/README.md` rather than
   forcing them into the stack.
