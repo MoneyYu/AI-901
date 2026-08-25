@@ -29,12 +29,13 @@ test suite. Deliverables are an attendee README, a trainer-only demo Terraform s
    assignments; scripts use `az account get-access-token` / `--auth-mode login` and **retry on 401/403**.
 3. **Models must be GA and not near retirement.** Re-check the
    [retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)
-   with today's date before every delivery. Current: **gpt-5.4-mini** (chat/agents/vision/text),
-   **gpt-5.2** + **text-embedding-3-large** (Content Understanding). ⚠️ The **gpt-4.1 family is deprecated
-   (retires 2026-10-14)**; **gpt-5.2 itself retires 2026-12-12** (re-check / migrate before then). Content
-   Understanding supports only a fixed completion-model set (gpt-5.2 / gpt-4.1 family, the latter
-   deprecated), so CU gets its own deployment. The upstream mslearn lab uses gpt-5-mini; this stack
-   uses gpt-5.4-mini for quota headroom (equivalent).
+   with today's date before every delivery. Current profiles: `model_profile=current` =>
+   **gpt-5.4-mini** (`2026-03-17`, GA retires **2027-09-21**); `model_profile=parity` =>
+   **gpt-5-mini** (`2025-08-07`, GA retires **2027-02-09**) to mirror the upstream lab. Content Understanding stays on
+   **gpt-5.2** (`2025-12-11`, GA retires **2027-06-08**) + **text-embedding-3-large** (`1`, GA retires
+   **2028-02-09**); image generation is **gpt-image-2** (`2026-04-21`, default-on toggle). ⚠️ The
+   **gpt-4.1 family is Legacy (retires 2027-04-14)** and is not deployed. Do not promise a Terraform
+   video-generation backup unless a current GA replacement exists.
 4. **Verify every external link (HTTP 200) before adding it** to README/docs.
 5. **The Terraform is a *backup* that must reach a completed (resources + data-plane) state** so demos
    show real results immediately.
@@ -48,8 +49,12 @@ test suite. Deliverables are an attendee README, a trainer-only demo Terraform s
   (`group_name = "AI901-<postfix>"`, `class_name = "ai901"`, fixed `random_str = "fnd"`).
 - Region is a **local** (`eastus2`), not a free variable.
 - Apply `local.default_tags` (`environment` + `SecurityControl = "Ignore"`) to every taggable resource.
-- **Chain `azurerm_cognitive_deployment` with `depends_on`** — the control plane rejects parallel
-  deployment writes. Deployment name == model name (keeps the CU default mapping an identity map).
+- **Serialize all `Microsoft.CognitiveServices/accounts/*` child writes with explicit `depends_on`** —
+  project creation, model deployments, and any same-account cleanup-marker operations must run
+  one-at-a-time because the control plane accepts only one child operation per account. Through
+  `azurerm` v4.81, `azurerm_cognitive_account_project` was not covered by the provider's deployment lock,
+  and provider locks only coordinate process-local activity. `Microsoft.Authorization/roleAssignments`
+  can stay parallel. Deployment name == model name (keeps the CU default mapping an identity map).
 - Data plane = `terraform_data` + `local-exec` (`pwsh -NoProfile -File scripts/*.ps1`), gated by
   `var.enable_data_plane`. **Each `environment` map var must match the script's `Get-RequiredEnv` calls.**
 - Don't commit `.terraform/`, `*.tfstate*`, `.terraform.lock.hcl`.

@@ -18,18 +18,20 @@ plus model deployments and a Content Understanding analyzer.
 | `azurerm_resource_group.rg` (`AI901-<postfix>`) | Holds the backup environment |
 | `azurerm_resource_group.demo_rg` (`Demo<postfix>`) | Empty RG for the live from-scratch build |
 | `azurerm_cognitive_account.foundry` (AIServices) + `_project` | Foundry account/project (M1) |
-| `azurerm_cognitive_deployment.gpt` = **gpt-5.4-mini** | Chat / agents / text / vision (M1, M2, M3, M5) |
+| `azurerm_cognitive_deployment.gpt` = **gpt-5.4-mini** (`current`) or **gpt-5-mini** (`parity`) | Chat / agents / text / vision (M1, M2, M3, M5) |
 | `azurerm_cognitive_deployment.cu_completion` = **gpt-5.2** | Content Understanding completion model (M6) |
 | `azurerm_cognitive_deployment.embedding` = **text-embedding-3-large** | Content Understanding embeddings (M6) |
 | `azurerm_cognitive_deployment.image` = **gpt-image-2** *(toggle)* | Image generation (M5) — GA; gated by `enable_image_generation` |
-| `azurerm_cognitive_deployment.video` = **sora-2** *(toggle, off)* | Video generation (M5) — Preview; gated by `enable_video_generation`, needs Sora quota |
 | `azurerm_storage_account.default` + containers | Sample receipts (M6) and images (M5) |
 | Content Understanding analyzer `ai901receiptanalyzer` | Custom receipt field-extraction demo (M6) |
 
 Speech (M4), Language (M3), and Vision image **analysis** (M5) need **no extra resources** — they're
 exposed by the same multi-service Foundry account and demoed live in the portal/playground. Image
-**generation** (M5) is deployed by default (`gpt-image-2`, GA). **Video** generation (`sora-2`, Preview)
-is an **optional toggle, off by default** — enable it only if your subscription has Sora quota (see Models).
+**generation** (M5) is deployed by default (`gpt-image-2`, GA) unless you disable
+`enable_image_generation`. Video generation is intentionally **out of scope** for this backup stack:
+the prior Sora path was removed because `sora-2` is Preview, its target catalog retires 2026-09-15,
+and there is no GA video-generation successor to pin today. Keep M5 video-generation coverage
+conceptual unless a current GA replacement becomes available.
 
 ## Entra ID (AAD) only — no keys
 
@@ -46,8 +48,9 @@ Company policy forbids account/access keys, so the whole stack is key-less:
 ## Prerequisites
 
 - **Terraform** >= 1.5, **Azure CLI** (`az`), **PowerShell 7** (`pwsh`).
-- `az login` to a subscription **with model quota** for `gpt-5.4-mini`, `gpt-5.2`, and
-  `text-embedding-3-large` in **`eastus2`**.
+- `az login` to a subscription **with model quota** in **`eastus2`** for the selected chat profile
+  (`gpt-5.4-mini` for `model_profile=current`, `gpt-5-mini` for `model_profile=parity`), plus
+  `gpt-5.2`, `text-embedding-3-large`, and optionally `gpt-image-2`.
 - The signed-in principal must be able to create role assignments (Owner / User Access Administrator)
   on the new resource group.
 
@@ -56,13 +59,83 @@ Company policy forbids account/access keys, so the whole stack is key-less:
 
 ## Deploy
 
-```powershell
-cd TERRAFORM
-az login                      # AAD session for the data-plane scripts
-terraform init
-terraform plan  -var group_postfix=0609     # confirm names like AI901-0609
-terraform apply -var group_postfix=0609
-```
+**Step 0 (required):** run the preflight before `plan`/`apply`. It verifies the **exact catalog
+version + SKU**, **GA lifecycle**, **SKU retirement**, and **incremental quota** for the selected
+deployment profile.
+
+- Every preflight-affecting script argument must exactly match the values you pass to
+  `terraform plan` / `terraform apply`. Do **not** sync only `ModelProfile`; mirror every override.
+  The matching pairs are:
+
+  | Preflight script | Terraform |
+  | --- | --- |
+  | `-ModelProfile` | `-var model_profile` |
+  | `-EnableImageGeneration` | `-var enable_image_generation` |
+  | `-ChatCapacity` | `-var chat_capacity` |
+  | `-CuCompletionCapacity` | `-var cu_completion_capacity` |
+  | `-EmbeddingCapacity` | `-var embedding_capacity` |
+  | `-ImageModelName` | `-var image_model_name` |
+  | `-ImageModelVersion` | `-var image_model_version` |
+  | `-ImageCapacity` | `-var image_capacity` |
+
+- For a **fresh deployment**, omit `-TargetResourceGroupName` and `-TargetAccountName`. The preflight
+  then treats the full requested capacity as new quota demand.
+
+- For a **re-apply against the exact Foundry account this Terraform stack already controls**, pass
+  **both** `-TargetResourceGroupName` and `-TargetAccountName` so the preflight can subtract only the
+  matching existing Terraform deployments when it calculates **incremental** quota demand. These are
+  optional **preflight-only** inputs, **not** Terraform variables, and they must point at the exact
+  account managed by this stack.
+
+- Default `model_profile=current`:
+
+  ```powershell
+  cd TERRAFORM
+  az login
+  pwsh -NoProfile -File scripts\Test-ModelAvailability.ps1
+  terraform init
+  terraform plan  -var group_postfix=0609     # confirm names like AI901-0609
+  terraform apply -var group_postfix=0609
+  ```
+
+- Only if Terraform will also use `-var model_profile=parity`:
+
+  ```powershell
+  cd TERRAFORM
+  az login
+  pwsh -NoProfile -File scripts\Test-ModelAvailability.ps1 -ModelProfile parity
+  terraform init
+  terraform plan  -var group_postfix=0609 -var model_profile=parity
+  terraform apply -var group_postfix=0609 -var model_profile=parity
+  ```
+
+- If you override Terraform values, mirror them in the preflight call. For example, to disable image
+  generation in both places:
+
+  ```powershell
+  cd TERRAFORM
+  az login
+  pwsh -NoProfile -File scripts\Test-ModelAvailability.ps1 -EnableImageGeneration:$false
+  terraform init
+  terraform plan  -var group_postfix=0609 -var enable_image_generation=false
+  terraform apply -var group_postfix=0609 -var enable_image_generation=false
+  ```
+
+- If you are re-applying to an existing Terraform-managed account, add the target account identifiers
+  only to the preflight call. Example:
+
+  ```powershell
+  cd TERRAFORM
+  az login
+  pwsh -NoProfile -File scripts\Test-ModelAvailability.ps1 `
+    -TargetResourceGroupName AI901-0609 `
+    -TargetAccountName ai901-0609-foundry-fnd
+  terraform init
+  terraform plan  -var group_postfix=0609
+  terraform apply -var group_postfix=0609
+  ```
+
+The preflight values and Terraform values **must match exactly** for every overridden knob.
 
 `apply` provisions the resources, then runs the data-plane scripts automatically:
 
@@ -85,9 +158,11 @@ terraform output                       # foundry_endpoint, deployments, analyzer
 az cognitiveservices account deployment list -g AI901-0609 -n <foundry_name> -o table
 ```
 
-In the [Foundry portal](https://ai.azure.com): the project shows the three deployments, and Content
-Understanding lists the `ai901receiptanalyzer` analyzer — run it against a file in the
-`sample-documents` container to see extracted receipt fields.
+In the [Foundry portal](https://ai.azure.com): the project shows **four** deployments by default
+(the selected chat model, `gpt-5.2`, `text-embedding-3-large`, `gpt-image-2`). If
+`enable_image_generation=false`, expect **three**. Content Understanding lists the
+`ai901receiptanalyzer` analyzer — run it against a file in the `sample-documents` container to see
+extracted receipt fields.
 
 ## Destroy
 
@@ -100,52 +175,52 @@ terraform destroy -var group_postfix=0609
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `group_postfix` | _(required)_ | 1–10 lowercase alphanumerics; drives all resource names |
-| `chat_capacity` | `30` | gpt-5.4-mini TPM (thousands) |
+| `model_profile` | `current` | Chat-model profile: `current` = `gpt-5.4-mini` (`2026-03-17`, GA to 2027-09-21); `parity` = `gpt-5-mini` (`2025-08-07`, GA to 2027-02-09) to mirror the upstream lab |
+| `chat_capacity` | `30` | Selected chat-profile TPM (thousands) |
 | `cu_completion_capacity` | `10` | gpt-5.2 TPM for Content Understanding |
 | `embedding_capacity` | `30` | text-embedding-3-large TPM |
 | `enable_image_generation` | `true` | Deploy the gpt-image-2 image model (M5). Disable if no image quota in the region |
 | `image_model_name` | `gpt-image-2` | Image-generation model (GA) |
 | `image_model_version` | `2026-04-21` | Version for `image_model_name` |
 | `image_capacity` | `1` | Image deployment capacity (image models share a small per-region quota) |
-| `enable_video_generation` | `false` | Deploy the sora-2 video model (M5, Preview). **Off by default** — needs Sora quota |
-| `video_model_name` | `sora-2` | Video-generation model (Preview) |
-| `video_model_version` | `2025-12-08` | Version for `video_model_name` |
-| `video_capacity` | `1` | Video deployment capacity (Sora RPM quota) |
 | `deployer_object_id` | `null` | Entra object ID for data-plane RBAC (defaults to the Terraform identity) |
 | `enable_data_plane` | `true` | Run the sample-data + CU analyzer scripts during `apply` |
 
+## Troubleshooting
+
+| Symptom | Meaning | What to do |
+| --- | --- | --- |
+| `409 RequestConflict` on project or model deployment | Another `Microsoft.CognitiveServices/accounts/*` child write is already in flight on the same Foundry account | Wait for the other write to finish, avoid concurrent portal/Azure CLI/other pipeline changes, then rerun. Terraform's explicit chain only serializes the resources in **this apply** |
+| `InsufficientQuota` on `gpt-image-2` | The region does not have enough incremental image quota | Re-run with `-var enable_image_generation=false` for a 3-model backup, or obtain more `eastus2` image quota before class |
+
 ## Models
 
-Pinned versions were **GA** as of 2026-07-20 (`version_upgrade_option = "NoAutoUpgrade"` holds the pin).
-**Re-check the
+Pinned versions were checked against the official lifecycle on **2026-08-26**
+(`version_upgrade_option = "NoAutoUpgrade"` holds the pin). **Re-check the
 [retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)
 before each delivery.**
 
-> ⚠️ The **gpt-4.1 family is deprecated** (retires 2026-10-14), so this stack migrated off it:
-> chat → **gpt-5.4-mini**, CU completion → **gpt-5.2**. CU's only non-deprecated completion model is
-> gpt-5.2, which **itself retires 2026-12-12** — plan the next migration before then. The upstream
-> mslearn AI-901 lab deploys **gpt-5-mini**; this backup stack uses gpt-5.4-mini for wider quota
-> headroom (functionally equivalent for the demos).
+> `model_profile=current` (default) deploys **gpt-5.4-mini** (`2026-03-17`) for broader quota
+> headroom. `model_profile=parity` deploys **gpt-5-mini** (`2025-08-07`) to mirror the upstream lab.
+> CU remains on **gpt-5.2** and **text-embedding-3-large**. The **gpt-4.1 family is Legacy** and
+> retires **2027-04-14**; this stack does **not** deploy it.
 
-| Model | Deployment | Version | Status (2026-07-20) | Used by |
+| Model / profile | Deployment | Version | Status (2026-08-26) | Used by |
 | --- | --- | --- | --- | --- |
-| gpt-5.4-mini | `gpt-5.4-mini` | 2026-03-17 | GA, retires 2027-03-18 | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
-| gpt-5.2 | `gpt-5.2` | 2025-12-11 | GA, retires 2026-12-12 | Content Understanding completion (M6) |
-| text-embedding-3-large | `text-embedding-3-large` | 1 | GA, retires 2027-04-15 | Content Understanding embeddings (M6) |
-| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | Image generation (M5) — toggle `enable_image_generation` (on) |
-| sora-2 | `sora-2` | 2025-12-08 | Preview | Video generation (M5) — toggle `enable_video_generation` (**off**) |
-
-> **Video generation (M5)** — `sora-2` is **Preview** and **quota-constrained**. The Terraform *can*
-> deploy it (the deployment request is valid in `eastus2`), but it is **off by default** because the
-> Sora-2 quota (Requests Per Minute) is small and often fully allocated — a test apply in the prep
-> subscription returned `InsufficientQuota` (15/15 used). Enable `enable_video_generation=true` only if
-> you have free Sora quota; otherwise demo video generation in the Foundry portal. (`gpt-image-1`-series
-> image models need access registration, so this stack uses the GA `gpt-image-2` for image generation.)
+| gpt chat (`current`) | `gpt-5.4-mini` | 2026-03-17 | GA, retires 2027-09-21 | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
+| gpt chat (`parity`) | `gpt-5-mini` | 2025-08-07 | GA, retires 2027-02-09; use only when matching the upstream lab profile | Chat, agents, text, vision analysis (M1/M2/M3/M5) |
+| gpt-5.2 | `gpt-5.2` | 2025-12-11 | GA, retires 2027-06-08 | Content Understanding completion (M6) |
+| text-embedding-3-large | `text-embedding-3-large` | 1 | GA, retires 2028-02-09 | Content Understanding embeddings (M6) |
+| gpt-image-2 | `gpt-image-2` | 2026-04-21 | GA | Image generation (M5) — toggle `enable_image_generation` (default on) |
 
 ## Notes
 
-- Model deployments are **chained with `depends_on`** — the Cognitive Services control plane rejects
-  parallel deployment writes.
+- Terraform explicitly chains the Foundry account child writes
+  (`Microsoft.CognitiveServices/accounts/*`, including the project and model deployments) within a
+  single apply because the control plane accepts only one in-flight child operation per account.
+  This ordering does **not** coordinate external portal / Azure CLI / other pipeline writes.
+- Provider locks only coordinate **process-local** activity. `Microsoft.Authorization/roleAssignments`
+  can stay parallel because they are not `Microsoft.CognitiveServices/accounts/*` child writes.
 - Naming uses a fixed `local.random_str = "fnd"`. After a destroy/recreate within ~48h you may hit the
   Cognitive account soft-delete name reservation; switch `random_str` to `random_string.rid.result`
   (one-line edit in `MAIN.tf`) for a fresh suffix.

@@ -61,10 +61,21 @@ variable "group_postfix" {
   }
 }
 
-# Model capacities (thousands of tokens-per-minute). Adjust to the quota
-# available in your subscription/region before apply.
+variable "model_profile" {
+  description = "Chat model profile. current preserves gpt-5.4-mini 2026-03-17 (GA, retires 2027-09-21); parity matches the upstream lab with gpt-5-mini 2025-08-07 (GA, retires 2027-02-09)."
+  type        = string
+  default     = "current"
+
+  validation {
+    condition     = contains(["parity", "current"], var.model_profile)
+    error_message = "model_profile must be either \"parity\" or \"current\"."
+  }
+}
+
+# Token-based model capacities (thousands of tokens per minute). Adjust to the
+# quota available in your subscription/region before apply.
 variable "chat_capacity" {
-  description = "Capacity for the gpt-5.4-mini chat/agents/vision/text deployment."
+  description = "Capacity for the selected chat/agents/vision/text deployment."
   type        = number
   default     = 30
 }
@@ -81,10 +92,9 @@ variable "embedding_capacity" {
   default     = 30
 }
 
-# Image generation (module 5). gpt-image-2 is GA (no access registration), so it
-# can be deployed by Terraform. Gated by a toggle and parameterized so you can
-# disable it or swap to a model you have quota for. Video generation (Sora) is
-# Preview and stays a manual portal step - see TERRAFORM/README.md.
+# Image generation (module 5). gpt-image-2 is GA (no access registration), so
+# it can be deployed by Terraform. Gated by a toggle and parameterized so you
+# can disable it or swap to a model you have quota for.
 variable "enable_image_generation" {
   description = "Deploy a GA image-generation model (gpt-image-2) for the module 5 image-generation demo. Disable if your subscription lacks image quota in the region."
   type        = bool
@@ -104,35 +114,7 @@ variable "image_model_version" {
 }
 
 variable "image_capacity" {
-  description = "Capacity for the image-generation deployment (image models share a small per-region quota)."
-  type        = number
-  default     = 1
-}
-
-# Video generation (module 5). Sora is Preview, so it is OFF by default - the
-# standard stack stays exactly as validated. Flip enable_video_generation to
-# true to deploy sora-2 for the module 5 video-generation demo (subject to
-# Preview availability / quota in the region).
-variable "enable_video_generation" {
-  description = "Deploy a Sora video-generation model (Preview) for the module 5 video demo. Off by default."
-  type        = bool
-  default     = false
-}
-
-variable "video_model_name" {
-  description = "Video-generation model to deploy when enable_video_generation = true."
-  type        = string
-  default     = "sora-2"
-}
-
-variable "video_model_version" {
-  description = "Version for video_model_name (sora-2 2025-10-06 retires 2026-07-15; prefer 2025-12-08)."
-  type        = string
-  default     = "2025-12-08"
-}
-
-variable "video_capacity" {
-  description = "Capacity for the video-generation deployment."
+  description = "Capacity for the image-generation deployment (requests per minute for image models, which use a small per-region quota)."
   type        = number
   default     = 1
 }
@@ -168,6 +150,41 @@ locals {
   # Entra object ID that the data-plane scripts authenticate as (the `az`
   # identity). Defaults to the identity Terraform runs as.
   deployer_oid = coalesce(var.deployer_object_id, data.azurerm_client_config.current.object_id)
+  fixed_models = {
+    cu_completion = {
+      name    = "gpt-5.2"
+      version = "2025-12-11"
+    }
+    embedding = {
+      name    = "text-embedding-3-large"
+      version = "1"
+    }
+  }
+  image_model = {
+    name    = var.image_model_name
+    version = var.image_model_version
+  }
+  model_profiles = {
+    parity = {
+      chat = {
+        name    = "gpt-5-mini"
+        version = "2025-08-07"
+      }
+      cu_completion = local.fixed_models.cu_completion
+      embedding     = local.fixed_models.embedding
+      image         = local.image_model
+    }
+    current = {
+      chat = {
+        name    = "gpt-5.4-mini"
+        version = "2026-03-17"
+      }
+      cu_completion = local.fixed_models.cu_completion
+      embedding     = local.fixed_models.embedding
+      image         = local.image_model
+    }
+  }
+  models = local.model_profiles[var.model_profile]
 
   # Shared tags applied to every taggable resource. SecurityControl = "Ignore"
   # exempts these lab/demo resources from security/CSPM policy.

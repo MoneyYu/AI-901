@@ -42,8 +42,12 @@ don't change it casually. If one specific service is capacity-constrained in tha
 2. `azurerm_cognitive_account_project`.
 3. one `azurerm_cognitive_deployment` **per model**.
 
-**Chain model deployments with `depends_on`** (one after another) on purpose — the Cognitive
-Services control plane rejects parallel deployment writes.
+**Serialize every `Microsoft.CognitiveServices/accounts/*` child write with explicit `depends_on`**
+(one after another) on purpose — account projects, model deployments, and any same-account cleanup
+markers all share the same control-plane gate, which only accepts one child operation per account.
+Through `azurerm` v4.81, `azurerm_cognitive_account_project` was not covered by the provider's
+deployment lock, and provider locks only coordinate process-local activity. Keep
+`Microsoft.Authorization/roleAssignments` parallel; they are a different resource provider.
 
 ## Entra ID (AAD) only — no keys
 
@@ -91,7 +95,9 @@ normalization.
 
 ## TERRAFORM/README.md
 
-Document: prerequisites (`az login`, subscription, region quota), `init`/`apply`/`destroy`, the
+Document: prerequisites (`az login`, subscription, region quota), any required **model-availability
+preflight** and how its inputs map to Terraform variables, `init`/`apply`/`destroy`, the
 **variables** table, that the **data plane runs automatically during `apply`** (and how to re-run
-just it), how to **verify** it worked, and any models that must be **deployed manually in the
-portal** (see Phase 4).
+just it), how to **verify** it worked, and any intentionally unsupported preview-only scenarios
+(for example, say the backup has no GA video-generation fallback instead of telling trainers to
+hand-deploy a retired preview model).
