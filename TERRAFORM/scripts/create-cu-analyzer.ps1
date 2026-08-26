@@ -68,8 +68,8 @@ $headers = @{
 # set before any analyzer can be created. Map the CU model names/aliases to our
 # actual deployment names via PATCH /contentunderstanding/defaults.
 #
-# CU's only non-deprecated completion model is gpt-5.2 (the gpt-4.1 family
-# retires 2026-10-14). Both the completion default and the "mini" alias point at
+# CU's only non-Legacy completion model in this stack is gpt-5.2 (the gpt-4.1
+# family is Legacy and retires 2027-04-14). Both the completion default and the "mini" alias point at
 # the gpt-5.2 deployment: this stack's custom analyzer only uses completion +
 # embedding, and no gpt-5-class "mini" is a CU-supported completion model.
 #

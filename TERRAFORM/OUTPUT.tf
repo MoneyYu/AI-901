@@ -28,7 +28,7 @@ output "foundry_project_name" {
 
 # --- Model deployments -------------------------------------------------------
 output "chat_deployment" {
-  description = "gpt-5.4-mini deployment (chat / agents / vision / text)."
+  description = "Primary chat deployment (chat / agents / vision / text)."
   value       = azurerm_cognitive_deployment.gpt.name
 }
 
@@ -44,11 +44,6 @@ output "embedding_deployment" {
 output "image_deployment" {
   description = "Image-generation deployment (module 5), if enabled."
   value       = var.enable_image_generation ? azurerm_cognitive_deployment.image[0].name : null
-}
-
-output "video_deployment" {
-  description = "Video-generation deployment (module 5), if enabled (Preview)."
-  value       = var.enable_video_generation ? azurerm_cognitive_deployment.video[0].name : null
 }
 
 # --- Storage -----------------------------------------------------------------

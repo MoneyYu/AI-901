@@ -102,6 +102,13 @@ resource "azurerm_role_assignment" "deployer_cs_user" {
   principal_id         = local.deployer_oid
 }
 
+# Azure allows only one Cognitive Services account child write at a time.
+# azurerm 4.x deployment resources lock the parent account, but
+# azurerm_cognitive_account_project lacked that lock through v4.81, so the
+# first deployment must explicitly depend on the project. These provider locks
+# and Terraform depends_on edges coordinate only within a single apply; they do
+# not protect concurrent portal, Azure CLI, or other pipeline writes.
+# Microsoft.Authorization role assignments remain parallel.
 resource "azurerm_cognitive_account_project" "project" {
   name                 = "${local.group_name_lower}-project"
   cognitive_account_id = azurerm_cognitive_account.foundry.id
@@ -121,19 +128,19 @@ resource "azurerm_cognitive_account_project" "project" {
 # Deployment name == model name so the Content Understanding default mapping
 # is an identity map.
 #
-# Versions are pinned to CU-supported / GA versions (checked 2026-07-20) and
+# Versions are pinned to CU-supported / GA versions (checked 2026-08-26) and
 # set to NoAutoUpgrade so the pin holds. Re-check the retirement schedule
 # before each delivery and bump as needed:
 # https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule
 ###############################################################################
 
-# Primary model: chat, agents, text analysis (general-purpose), and vision
-# (gpt-5.4-mini is multimodal). Used across modules 1, 2, 3, and 5.
-# GA, retires 2027-03-18. NOTE: the upstream mslearn AI-901 lab deploys
-# gpt-5-mini; this backup stack uses gpt-5.4-mini for wider quota headroom /
-# longer runway (functionally equivalent) - see docs/demo-environment.md.
+# Primary model: chat, agents, text analysis (general-purpose), and vision.
+# Used across modules 1, 2, 3, and 5. The current profile preserves
+# gpt-5.4-mini 2026-03-17 (GA, retires 2027-09-21); parity switches only this
+# deployment to gpt-5-mini 2025-08-07 (GA, retires 2027-02-09) to match the
+# upstream lab.
 resource "azurerm_cognitive_deployment" "gpt" {
-  name                   = "gpt-5.4-mini"
+  name                   = local.models.chat.name
   cognitive_account_id   = azurerm_cognitive_account.foundry.id
   version_upgrade_option = "NoAutoUpgrade"
 
@@ -144,18 +151,19 @@ resource "azurerm_cognitive_deployment" "gpt" {
 
   model {
     format  = "OpenAI"
-    name    = "gpt-5.4-mini"
-    version = "2026-03-17"
+    name    = local.models.chat.name
+    version = local.models.chat.version
   }
+
+  depends_on = [azurerm_cognitive_account_project.project]
 }
 
 # Completion model for Content Understanding (module 6). CU supports a fixed
-# set of completion models; the gpt-4.1 family is deprecated (retires
-# 2026-10-14), so gpt-5.2 is the only non-deprecated CU completion model
-# (Microsoft's recommended migration target). GA, but itself retires
-# 2026-12-12 - re-check before each delivery.
+# set of completion models; the gpt-4.1 family is Legacy (retires
+# 2027-04-14), so gpt-5.2 is the non-Legacy CU completion model used here.
+# GA, retires 2027-06-08 - re-check before each delivery.
 resource "azurerm_cognitive_deployment" "cu_completion" {
-  name                   = "gpt-5.2"
+  name                   = local.models.cu_completion.name
   cognitive_account_id   = azurerm_cognitive_account.foundry.id
   version_upgrade_option = "NoAutoUpgrade"
 
@@ -166,16 +174,17 @@ resource "azurerm_cognitive_deployment" "cu_completion" {
 
   model {
     format  = "OpenAI"
-    name    = "gpt-5.2"
-    version = "2025-12-11"
+    name    = local.models.cu_completion.name
+    version = local.models.cu_completion.version
   }
 
   depends_on = [azurerm_cognitive_deployment.gpt]
 }
 
 # Embedding model required by Content Understanding analyzers (module 6).
+# text-embedding-3-large version 1 is GA and retires 2028-02-09.
 resource "azurerm_cognitive_deployment" "embedding" {
-  name                   = "text-embedding-3-large"
+  name                   = local.models.embedding.name
   cognitive_account_id   = azurerm_cognitive_account.foundry.id
   version_upgrade_option = "NoAutoUpgrade"
 
@@ -186,21 +195,20 @@ resource "azurerm_cognitive_deployment" "embedding" {
 
   model {
     format  = "OpenAI"
-    name    = "text-embedding-3-large"
-    version = "1"
+    name    = local.models.embedding.name
+    version = local.models.embedding.version
   }
 
   depends_on = [azurerm_cognitive_deployment.cu_completion]
 }
 
-# Image-generation model (module 5). GA model (gpt-image-2) so it deploys
-# without access registration; toggle-gated and parameterized so you can
-# disable it or swap to a model you have quota for. Placed last in the
+# Image-generation model (module 5). GA models such as gpt-image-2 deploy
+# without access registration; this stays toggle-gated and parameterized so you
+# can disable it or swap to a model you have quota for. Placed last in the
 # depends_on chain (the control plane rejects parallel deployment writes).
-# Video generation (Sora) is Preview - deploy it manually in the portal.
 resource "azurerm_cognitive_deployment" "image" {
   count                  = var.enable_image_generation ? 1 : 0
-  name                   = var.image_model_name
+  name                   = local.models.image.name
   cognitive_account_id   = azurerm_cognitive_account.foundry.id
   version_upgrade_option = "NoAutoUpgrade"
 
@@ -211,38 +219,11 @@ resource "azurerm_cognitive_deployment" "image" {
 
   model {
     format  = "OpenAI"
-    name    = var.image_model_name
-    version = var.image_model_version
+    name    = local.models.image.name
+    version = local.models.image.version
   }
 
   depends_on = [azurerm_cognitive_deployment.embedding]
-}
-
-# Video-generation model (module 5). Sora is Preview, so OFF by default. When
-# enabled it is placed last in the depends_on chain (after embedding and the
-# image deployment if present) so deployment writes stay serialized regardless
-# of the image toggle.
-resource "azurerm_cognitive_deployment" "video" {
-  count                  = var.enable_video_generation ? 1 : 0
-  name                   = var.video_model_name
-  cognitive_account_id   = azurerm_cognitive_account.foundry.id
-  version_upgrade_option = "NoAutoUpgrade"
-
-  sku {
-    name     = "GlobalStandard"
-    capacity = var.video_capacity
-  }
-
-  model {
-    format  = "OpenAI"
-    name    = var.video_model_name
-    version = var.video_model_version
-  }
-
-  depends_on = [
-    azurerm_cognitive_deployment.embedding,
-    azurerm_cognitive_deployment.image,
-  ]
 }
 
 ###############################################################################

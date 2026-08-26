@@ -80,8 +80,10 @@
    - **OpenAI Python SDK vs Azure Language SDK**：自然語言彈性 vs 結構化＋信賴分數。
 4. **模型生命週期（model lifecycle）**：每次開課前都要重新檢查
    [retirement schedule](https://learn.microsoft.com/azure/foundry/openai/concepts/model-retirement-schedule)。
-   ⚠️ **gpt-4.1 家族已棄用（2026-10-14 退役）**，示範已改用 **gpt-5.4-mini**（chat，GA 至 2027-03-18）與
-   **gpt-5.2**（CU 完成模型，GA，但 **2026-12-12 退役**——12 月前需再遷移一次）。
+   2026-08-26 核對結果：`model_profile=current` 的 chat 模型為 **gpt-5.4-mini**（GA 至 **2027-09-21**）；
+   `model_profile=parity` 則改用 **gpt-5-mini**（`2025-08-07`，GA 至 **2027-02-09**，只在要和上游 lab 完全一致時使用）。CU 固定使用
+   **gpt-5.2**（GA 至 **2027-06-08**）與 **text-embedding-3-large**（GA 至 **2028-02-09**）。
+   ⚠️ **gpt-4.1 家族現在是 Legacy，2027-04-14 退役，且本備援環境不再部署它。**
 5. **示範環境是 Entra ID（AAD）only、不使用任何 key**：備援 Terraform 環境全程以受控識別 + RBAC 驗證
    （見 [`docs/demo-environment.md`](./demo-environment.md)）。這也呼應 M1「key vs Entra ID」的觀念。
 
@@ -166,10 +168,10 @@
   **diffusion 模型**（去噪生成）；以 **Responses API + 多模態模型**做 image-to-text；
   在 Foundry 模型目錄用「text to image」「video generation」任務搜尋（如 gpt-image、sora）。
 - **Demo / Lab**：[computer vision](https://microsoftlearning.github.io/mslearn-ai-fundamentals/Instructions/Exercises/05a-image-analysis.html)（分析影像、生成影像、生成影片）。
-- **常見問題 / 坑**：image/video 生成模型多為 **Preview / 配額有限**，備援 Terraform **未**自動部署——需要時請在 Foundry 入口手動部署（見 demo-environment）。
+- **常見問題 / 坑**：備援環境**已預建** `gpt-image-2`，可直接示範 M5 影像生成；影片生成只保留概念說明，**目前沒有 GA 的備援部署方案**，也不要再另外手動部署已移除的 Sora 流程（見 demo-environment）。
   **Knowledge check 解答**：① 影像分析的對象＝**Pixels**；② CNN filters＝「從影像擷取數值特徵」；
   ③ ViT＝「用 attention 處理影像 patch、產生脈絡 embedding」；④ multimodal＝「能處理一種以上資料型態（文字＋影像）」；
-  ⑤ 程式化生成影像＝「用 **Responses API** 呼叫已部署的 image 模型」；⑥ Sora 採非同步＝「影片生成耗資源、需要時間」。
+  ⑤ 程式化生成影像＝「用 **Responses API** 呼叫已部署的 image 模型」；⑥ 影片生成工作通常採非同步＝「生成流程耗資源、需要時間」。
 - **重要連結**：[What is Azure AI Vision?](https://learn.microsoft.com/azure/ai-services/computer-vision/overview)、
   [Vision-enabled chat models](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/gpt-with-vision)、
   [Image generation](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/dall-e)、
@@ -210,10 +212,11 @@
 
 ## 7. 課前準備清單（開課前 1–2 天）
 
-- [ ] 重新檢查**模型生命週期**（gpt-5.4-mini / gpt-5.2 是否仍 GA、未近退役；⚠️ gpt-5.2 於 2026-12-12 退役）。
-- [ ] 確認目標區域（`eastus2`）對 **gpt-5.4-mini / gpt-5.2 / text-embedding-3-large** 有**配額**。
-- [ ] 如需示範 **image/video 生成（M5）**，先在 Foundry 入口**手動部署** gpt-image / sora（Preview/配額）。
-- [ ] 部署備援環境並驗證：`terraform apply -var group_postfix=<MMDD>`，確認 3 個模型部署 + 收據 analyzer 完成
+- [ ] 以對應的 `model_profile` 重新檢查**模型生命週期**：`current`=gpt-5.4-mini（至 2027-09-21）、`parity`=gpt-5-mini（至 2027-02-09；只在要比照上游 lab 時使用）；CU=`gpt-5.2`（至 2027-06-08）、embedding=`text-embedding-3-large`（至 2028-02-09）；確認 **gpt-4.1 家族未被重新帶回**。
+- [ ] 確認目標區域（`eastus2`）對所選 chat profile、**gpt-5.2 / text-embedding-3-large**，以及預設開啟的 **gpt-image-2** 有**配額**。
+- [ ] 如要與官方 lab 完全一致，先用 `pwsh -NoProfile -File scripts\Test-ModelAvailability.ps1 -ModelProfile parity` 驗證，再以 `-var model_profile=parity` 部署；否則維持預設 `current`。
+- [ ] M5 備援請確認 `gpt-image-2` 已可用；影片生成沒有可部署的 GA 備援替代，請只保留概念說明，不要再手動部署 retired Sora。
+- [ ] 部署備援環境並驗證：`terraform apply -var group_postfix=<MMDD>`，確認 **4 個模型部署**（chat + CU completion + embedding + image；若手動關閉 image 則為 3 個）+ 收據 analyzer 完成
       （見 [`docs/demo-environment.md`](./demo-environment.md)）。下課後 `terraform destroy`。
 - [ ] 取得並測試 **Skillable** 訓練金鑰；確認學員可登入 lab 環境。
 - [ ] 客製投影片中的 lab 連結頁（hosted lab 環境）並移除「Trainers:」箭頭備註。
@@ -226,7 +229,7 @@
 - **每個實作 lab 先建立 Foundry 專案**：開課時先示範一次，之後各模組就快。
 - **善用 playground**：先在 playground 講 prompt/參數/多模態，再帶到 Responses API 程式碼，降低「看不懂程式」焦慮。
 - **時間救援**：略過各模組的 **Optional/概念 lab**（不需訂用帳戶，可當回家作業），保留實作 lab。
-- **示範 vs 預建**：image/video 生成、Content Understanding analyzer 等耗時/受配額限制者，**用備援環境預建**好直接展示結果。
+- **示範 vs 預建**：`gpt-image-2` 與 Content Understanding analyzer 等耗時項目，**用備援環境預建**好直接展示結果；影片生成沒有 GA 備援替代，課堂上不要承諾「一定有可操作的 fallback」。
 - **反覆回扣比較表**：key vs Entra ID、ChatCompletions vs Responses、general-purpose vs Azure Language——
   這些是考試與理解的重點，建議全程多次回扣。
 
